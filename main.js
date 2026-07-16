@@ -162,6 +162,8 @@ function loadInhale() {
   walkAudio = new Audio('assets/audio/walk1.mp3');
   walkAudio.preload = 'auto';
   runAudio = new Audio('assets/audio/running1.mp3');
+  runAudio.loop = true;
+  runAudio.volume = 0.4;
   runAudio.preload = 'auto';
 }
 
@@ -735,9 +737,11 @@ function update(dt) {
       if (stopRunAudio && !stopRunAudio.paused) { stopRunAudio.pause(); stopRunAudio.currentTime = 0; }
       if (breathingAudio && !breathingAudio.paused) breathingAudio.pause();
       sprintAudio.play().catch(() => {});
+      if (runAudio) { runAudio.currentTime = 0; runAudio.play().catch(() => {}); }
     } else if (!shouldSprint && !sprintAudio.paused) {
       sprintAudio.pause();
       sprintAudio.currentTime = 0;
+      if (runAudio) { runAudio.pause(); runAudio.currentTime = 0; }
     }
   }
   if (gameState !== 'playing') return;
@@ -803,17 +807,9 @@ function update(dt) {
   }
 
   const step = Math.floor(moveT * 0.8 / Math.PI);
-  if (moving && step !== lastWalkStep) {
+  if (moving && step !== lastWalkStep && !isSprinting) {
     lastWalkStep = step;
-    if (walkAudio) { walkAudio.pause(); walkAudio.currentTime = 0; }
-    if (runAudio) { runAudio.pause(); runAudio.currentTime = 0; }
-    const a = isSprinting ? runAudio : walkAudio;
-    if (a) {
-      a.currentTime = 0;
-      a.volume = isSprinting ? 0.5 : 0.3;
-      a.playbackRate = isSprinting ? 1 : 1;
-      a.play().catch(() => {});
-    }
+    if (walkAudio) { walkAudio.currentTime = 0; walkAudio.play().catch(() => {}); }
   }
 
   if (isSprinting) {
