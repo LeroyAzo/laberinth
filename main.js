@@ -121,6 +121,7 @@ let stopRunAudio = null;
 let walkAudio = null;
 let runAudio = null;
 let lastWalkStep = -1;
+let walkDelay = 0;
 let monsterSeen = [];
 let monsterRoar = [];
 let seenBuffers = [];
@@ -147,7 +148,7 @@ function loadInhale() {
   sprintAudio.loop = true;
   sprintAudio.preload = 'auto';
   stopRunAudio = new Audio('assets/audio/stop_run1.mp3');
-  stopRunAudio.volume = 0.5;
+  stopRunAudio.volume = 0.3;
   stopRunAudio.preload = 'auto';
   for (let i = 1; i <= 3; i++) {
     const a = new Audio('assets/audio/monster_seen' + i + '.mp3');
@@ -738,10 +739,12 @@ function update(dt) {
       if (breathingAudio && !breathingAudio.paused) breathingAudio.pause();
       sprintAudio.play().catch(() => {});
       if (runAudio) { runAudio.currentTime = 0; runAudio.play().catch(() => {}); }
+      if (walkAudio) { walkAudio.pause(); walkAudio.currentTime = 0; }
     } else if (!shouldSprint && !sprintAudio.paused) {
       sprintAudio.pause();
       sprintAudio.currentTime = 0;
       if (runAudio) { runAudio.pause(); runAudio.currentTime = 0; }
+      walkDelay = 0.5;
     }
   }
   if (gameState !== 'playing') return;
@@ -780,6 +783,7 @@ function update(dt) {
     stamina.cur = Math.max(0, stamina.cur - 35 * dt);
     if (stamina.cur <= 0) {
       staminaCD = true;
+      walkDelay = 0.5;
       if (stopRunAudio) { stopRunAudio.currentTime = 0; stopRunAudio.play().catch(() => {}); }
     }
   } else if (!isHoldingBreath) {
@@ -807,7 +811,10 @@ function update(dt) {
   }
 
   const step = Math.floor(moveT * 0.8 / Math.PI);
-  if (moving && step !== lastWalkStep && !isSprinting) {
+  if (!isSprinting) {
+    if (walkDelay > 0) walkDelay -= dt;
+  }
+  if (moving && step !== lastWalkStep && !isSprinting && walkDelay <= 0) {
     lastWalkStep = step;
     if (walkAudio) { walkAudio.currentTime = 0; walkAudio.play().catch(() => {}); }
   }
