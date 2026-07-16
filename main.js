@@ -805,6 +805,8 @@ function update(dt) {
   const step = Math.floor(moveT * 0.8 / Math.PI);
   if (moving && step !== lastWalkStep) {
     lastWalkStep = step;
+    if (walkAudio) { walkAudio.pause(); walkAudio.currentTime = 0; }
+    if (runAudio) { runAudio.pause(); runAudio.currentTime = 0; }
     const a = isSprinting ? runAudio : walkAudio;
     if (a) {
       a.currentTime = 0;
