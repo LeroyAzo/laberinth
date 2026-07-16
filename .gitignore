@@ -1,0 +1,6 @@
+node_modules/
+.DS_Store
+*_bak.mp3
+*_bk.mp3
+*.tmp
+*.bak
