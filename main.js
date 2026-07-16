@@ -118,6 +118,8 @@ let exhalePlaying = false;
 let breathingAudio = null;
 let sprintAudio = null;
 let stopRunAudio = null;
+let walkAudio = null;
+let lastWalkStep = -1;
 let monsterSeen = [];
 let monsterRoar = [];
 let seenBuffers = [];
@@ -156,6 +158,8 @@ function loadInhale() {
     a.preload = 'auto';
     monsterRoar.push(a);
   }
+  walkAudio = new Audio('assets/audio/walk1.mp3');
+  walkAudio.preload = 'auto';
 }
 
 function playInhale() {
@@ -793,6 +797,15 @@ function update(dt) {
     moveT += moveD * (isSprinting ? 10 : 6);
   } else {
     moveT *= 0.9;
+  }
+
+  const step = Math.floor(moveT * 0.8 / Math.PI);
+  if (moving && step !== lastWalkStep && walkAudio) {
+    lastWalkStep = step;
+    walkAudio.currentTime = 0;
+    walkAudio.volume = isSprinting ? 0.6 : 0.3;
+    walkAudio.playbackRate = isSprinting ? 1.5 : 1;
+    walkAudio.play().catch(() => {});
   }
 
   if (isSprinting) {
