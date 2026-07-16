@@ -120,7 +120,7 @@ let sprintAudio = null;
 let stopRunAudio = null;
 let walkAudio = null;
 let runAudio = null;
-let lastWalkStep = -1;
+let walkDist = 0;
 let walkDelay = 0;
 let monsterSeen = [];
 let monsterRoar = [];
@@ -749,6 +749,7 @@ function update(dt) {
   }
   if (gameState !== 'playing') return;
   if (gameOver || player.won) return;
+  const prevPx = player.x, prevPy = player.y;
   const sin = Math.sin(player.dir);
   const cos = Math.cos(player.dir);
   isHoldingBreath = keys['c'] && !staminaCD && stamina.cur > 0 && !exhalePlaying;
@@ -810,15 +811,6 @@ function update(dt) {
     moveT *= 0.9;
   }
 
-  const step = Math.floor(moveT * 0.8 / Math.PI);
-  if (!isSprinting) {
-    if (walkDelay > 0) walkDelay -= dt;
-  }
-  if (moving && step !== lastWalkStep && !isSprinting && walkDelay <= 0) {
-    lastWalkStep = step;
-    if (walkAudio) { walkAudio.currentTime = 0; walkAudio.play().catch(() => {}); }
-  }
-
   if (isSprinting) {
     shakeX = (Math.random() - 0.5) * 2.5;
     shakeY = (Math.random() - 0.5) * 2.5;
@@ -843,6 +835,17 @@ function update(dt) {
   if (isExit(player.x, player.y) && !player.won) {
     player.won = true;
     player.winTime = performance.now();
+  }
+
+  const actualDist = Math.hypot(player.x - prevPx, player.y - prevPy);
+  if (actualDist > 0.001) {
+    walkDist += actualDist;
+    const stepDist = isSprinting ? 0.8 : 0.5;
+    if (!isSprinting && walkDelay > 0) walkDelay -= dt;
+    if (!isSprinting && walkDelay <= 0 && walkDist >= stepDist) {
+      walkDist = 0;
+      if (walkAudio) { walkAudio.currentTime = 0; walkAudio.play().catch(() => {}); }
+    }
   }
 
   try { updateEnemy(dt); } catch(e) { console.error('updateEnemy:', e); }
