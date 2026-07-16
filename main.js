@@ -816,7 +816,7 @@ function update(dt) {
   }
   if (moving && step !== lastWalkStep && !isSprinting && walkDelay <= 0) {
     lastWalkStep = step;
-    if (walkAudio) { walkAudio.currentTime = 0; walkAudio.play().catch(() => {}); }
+    if (walkAudio && walkAudio.paused) { walkAudio.currentTime = 0; walkAudio.play().catch(() => {}); }
   }
 
   if (isSprinting) {
