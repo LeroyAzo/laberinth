@@ -844,7 +844,7 @@ function update(dt) {
     if (!isSprinting && walkDelay > 0) walkDelay -= dt;
     if (!isSprinting && walkDelay <= 0 && walkDist >= stepDist) {
       walkDist = 0;
-      if (walkAudio) { walkAudio.currentTime = 0; walkAudio.play().catch(() => {}); }
+      if (walkAudio && walkAudio.paused) { walkAudio.currentTime = 0; walkAudio.play().catch(() => {}); }
     }
   }
 
