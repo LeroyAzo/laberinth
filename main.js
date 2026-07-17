@@ -122,7 +122,6 @@ let stopRunAudio = null;
 let walkAudio = null;
 let runAudio = null;
 let walkDelay = 0;
-let walkDist = 0;
 let lastWalkStep = -1;
 let monsterSeen = [];
 let monsterRoar = [];
@@ -1337,7 +1336,6 @@ function restartGame() {
   player.won = false; player.winTime = 0;
   stamina.cur = stamina.max;
   moveT = 0;
-  walkDist = 0;
   walkDelay = 0;
   footprints = [];
   dust = [];
