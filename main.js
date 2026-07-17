@@ -1444,4 +1444,3 @@ buildNavGrid();
 buildRouteTable();
 spawnEnemy();
 requestAnimationFrame((now) => { last = now; loop(now); });
-\n}catch(e){console.error('update:',e)}
