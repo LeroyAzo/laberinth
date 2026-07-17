@@ -69,7 +69,6 @@ function initAudio() {
       loadBuf('assets/audio/monster_seen' + i + '.mp3', seenBuffers);
       loadBuf('assets/audio/monster_roar' + i + '.mp3', roarBuffers);
     }
-    fetch('assets/audio/walk1.mp3').then(r => r.arrayBuffer()).then(b => audioCtx.decodeAudioData(b).then(d => walkBuffer = d).catch(()=>{}));
   } catch (_) {}
 }
 
@@ -113,20 +112,12 @@ function playPositionalSound(buf, vol) {
 }
 
 function playWalkStep() {
-  if (!audioCtx || !walkBuffer) return;
+  if (!walkAudio) return;
   try {
-    if (walkBuffer.duration <= 0) return;
-    const half = walkBuffer.duration / 2;
-    const offset = (walkStep % 2) * half;
+    const half = (walkAudio.duration || 1) / 2;
+    walkAudio.currentTime = (walkStep % 2) * half;
     walkStep++;
-    const src = audioCtx.createBufferSource();
-    src.buffer = walkBuffer;
-    const g = audioCtx.createGain();
-    g.gain.value = 0.3;
-    src.connect(g);
-    g.connect(audioCtx.destination);
-    src.onended = () => { src.disconnect(); g.disconnect(); };
-    src.start(0, offset, half);
+    walkAudio.play().catch(() => {});
   } catch(e) { console.error('walkStep:', e); }
 }
 
@@ -145,7 +136,6 @@ let monsterSeen = [];
 let monsterRoar = [];
 let seenBuffers = [];
 let roarBuffers = [];
-let walkBuffer = null;
 let walkStep = 0;
 
 function loadInhale() {
@@ -182,6 +172,7 @@ function loadInhale() {
     monsterRoar.push(a);
   }
   walkAudio = new Audio('assets/audio/walk1.mp3');
+  walkAudio.volume = 0.3;
   walkAudio.playbackRate = 1.35;
   walkAudio.preload = 'auto';
   runAudio = new Audio('assets/audio/running1.mp3');
