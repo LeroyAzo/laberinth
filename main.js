@@ -123,6 +123,7 @@ let runAudio = null;
 let walkDelay = 0;
 let lastWalkStep = -1;
 let walkStep = 0;
+let walkTimer = 0;
 let walkLAudio = null;
 let walkRAudio = null;
 let monsterSeen = [];
@@ -843,17 +844,19 @@ function update(dt) {
     player.winTime = performance.now();
   }
 
-  if (!isSprinting && moving) {
-    if (walkDelay > 0) walkDelay -= dt;
-  }
-  const step = Math.floor(moveT * 1.04 / Math.PI);
-  if (moving && step !== lastWalkStep && !isSprinting && walkDelay <= 0) {
-    lastWalkStep = step;
-    const isLeft = walkStep % 2 === 0;
-    const a = isLeft ? walkLAudio : walkRAudio;
-    walkStep++;
-    if (a && a.paused) { a.currentTime = 0; a.play().catch(() => {}); }
-    if (isLeft) walkDelay = 0.07;
+  if (moving && !isSprinting) {
+    if (walkDelay > 0) {
+      walkDelay -= dt;
+    } else {
+      walkTimer += dt;
+      const interval = (walkStep % 2 === 0) ? 0.38 : 0.32;
+      if (walkTimer >= interval) {
+        walkTimer = 0;
+        const a = (walkStep % 2 === 0) ? walkLAudio : walkRAudio;
+        walkStep++;
+        if (a && a.paused) { a.currentTime = 0; a.play().catch(() => {}); }
+      }
+    }
   }
 
   try{updateEnemy(dt)}catch(e){console.error('updateEnemy:',e)}
@@ -1343,7 +1346,9 @@ function restartGame() {
   player.won = false; player.winTime = 0;
   stamina.cur = stamina.max;
   moveT = 0;
+  walkTimer = 0;
   walkDelay = 0;
+  walkStep = 0;
   footprints = [];
   dust = [];
   gameOver = false;
