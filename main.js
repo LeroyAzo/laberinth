@@ -114,7 +114,9 @@ function playPositionalSound(buf, vol) {
 function playWalkStep() {
   if (!walkAudio) return;
   try {
-    walkAudio.currentTime = 0;
+    const half = (walkAudio.duration && walkAudio.duration > 0) ? walkAudio.duration / 2 : 0.3;
+    walkAudio.currentTime = (walkStep % 2) * half;
+    walkStep++;
     walkAudio.play().catch(e => console.error('walkPlay:', e));
   } catch(e) { console.error('walkStep:', e); }
 }
