@@ -115,6 +115,7 @@ function playPositionalSound(buf, vol) {
 function playWalkStep() {
   if (!audioCtx || !walkBuffer) return;
   try {
+    if (walkBuffer.duration <= 0) return;
     const half = walkBuffer.duration / 2;
     const offset = (walkStep % 2) * half;
     walkStep++;
