@@ -69,6 +69,7 @@ function initAudio() {
       loadBuf('assets/audio/monster_seen' + i + '.mp3', seenBuffers);
       loadBuf('assets/audio/monster_roar' + i + '.mp3', roarBuffers);
     }
+    fetch('assets/audio/walk1.mp3').then(r => r.arrayBuffer()).then(b => audioCtx.decodeAudioData(b).then(d => walkBuffer = d).catch(()=>{}));
   } catch (_) {}
 }
 
@@ -111,6 +112,20 @@ function playPositionalSound(buf, vol) {
   src.start();
 }
 
+function playWalkStep() {
+  if (!audioCtx || !walkBuffer) return;
+  const half = walkBuffer.duration / 2;
+  const offset = (walkStep % 2) * half;
+  walkStep++;
+  const src = audioCtx.createBufferSource();
+  src.buffer = walkBuffer;
+  const g = audioCtx.createGain();
+  g.gain.value = 0.3;
+  src.connect(g);
+  g.connect(audioCtx.destination);
+  src.start(0, offset, half);
+}
+
 let inhaleAudio = null;
 let exhaleLight = null;
 let exhaleHorror = null;
@@ -122,10 +137,13 @@ let walkAudio = null;
 let runAudio = null;
 let lastWalkStep = -1;
 let walkDelay = 0;
+let walkDist = 0;
 let monsterSeen = [];
 let monsterRoar = [];
 let seenBuffers = [];
 let roarBuffers = [];
+let walkBuffer = null;
+let walkStep = 0;
 
 function loadInhale() {
   inhaleAudio = new Audio('assets/audio/inhalo_horror1.mp3');
@@ -811,15 +829,6 @@ function update(dt) {
     moveT *= 0.9;
   }
 
-  const step = Math.floor(moveT * 0.8 / Math.PI);
-  if (!isSprinting) {
-    if (walkDelay > 0) walkDelay -= dt;
-  }
-  if (moving && step !== lastWalkStep && !isSprinting && walkDelay <= 0) {
-    lastWalkStep = step;
-    if (walkAudio && walkAudio.paused) { walkAudio.currentTime = 0; walkAudio.play().catch(() => {}); }
-  }
-
   if (isSprinting) {
     shakeX = (Math.random() - 0.5) * 2.5;
     shakeY = (Math.random() - 0.5) * 2.5;
@@ -844,6 +853,16 @@ function update(dt) {
   if (isExit(player.x, player.y) && !player.won) {
     player.won = true;
     player.winTime = performance.now();
+  }
+
+  if (!isSprinting) {
+    if (walkDelay > 0) walkDelay -= dt;
+    const actualDist = Math.hypot(player.x - prevPx, player.y - prevPy);
+    walkDist += actualDist;
+    if (walkDist >= 0.2 && walkDelay <= 0) {
+      walkDist = 0;
+      playWalkStep();
+    }
   }
 
   try { updateEnemy(dt); } catch(e) { console.error('updateEnemy:', e); }
@@ -1332,8 +1351,9 @@ function restartGame() {
   player.won = false; player.winTime = 0;
   stamina.cur = stamina.max;
   moveT = 0;
+  walkDist = 0;
   walkDelay = 0;
-  lastWalkStep = -1;
+  walkStep = 0;
   footprints = [];
   dust = [];
   gameOver = false;
