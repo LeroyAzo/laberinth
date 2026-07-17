@@ -111,13 +111,6 @@ function playPositionalSound(buf, vol) {
   src.start();
 }
 
-function playWalkStep() {
-  if (!walkAudio) { console.log('walk: no audio'); return; }
-  try {
-    console.log('walk: step', walkStep);
-    walkAudio.play().catch(e => console.error('walkPlay:', e));
-  } catch(e) { console.error('walkStep:', e); }
-}
 
 let inhaleAudio = null;
 let exhaleLight = null;
@@ -130,7 +123,7 @@ let walkAudio = null;
 let runAudio = null;
 let walkDelay = 0;
 let walkDist = 0;
-let walkTimer = 0;
+let lastWalkStep = -1;
 let monsterSeen = [];
 let monsterRoar = [];
 let seenBuffers = [];
@@ -174,8 +167,6 @@ function loadInhale() {
   walkAudio.volume = 0.3;
   walkAudio.playbackRate = 1.35;
   walkAudio.preload = 'auto';
-  walkAudio.onerror = () => console.log('walkAudio load error');
-  walkAudio.onloadedmetadata = () => console.log('walkAudio meta loaded, dur=' + walkAudio.duration);
   runAudio = new Audio('assets/audio/running1.mp3');
   runAudio.loop = true;
   runAudio.volume = 0.4;
@@ -852,13 +843,11 @@ function update(dt) {
 
   if (!isSprinting && moving) {
     if (walkDelay > 0) walkDelay -= dt;
-    walkTimer += dt;
-    if (walkTimer >= 0.5 && walkDelay <= 0) {
-      walkTimer = 0;
-      if (walkAudio) console.log('walk: ready=' + walkAudio.readyState + ' dur=' + walkAudio.duration + ' paused=' + walkAudio.paused);
-      console.log('walk: fire');
-      try { playWalkStep(); } catch(e) { console.error('walk:', e); }
-    }
+  }
+  const step = Math.floor(moveT * 0.8 / Math.PI);
+  if (moving && step !== lastWalkStep && !isSprinting && walkDelay <= 0) {
+    lastWalkStep = step;
+    if (walkAudio && walkAudio.paused) { walkAudio.currentTime = 0; walkAudio.play().catch(() => {}); }
   }
 
   try{updateEnemy(dt)}catch(e){console.error('updateEnemy:',e)}
@@ -1350,8 +1339,6 @@ function restartGame() {
   moveT = 0;
   walkDist = 0;
   walkDelay = 0;
-  walkTimer = 0;
-  walkStep = 0;
   footprints = [];
   dust = [];
   gameOver = false;
