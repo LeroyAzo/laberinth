@@ -358,6 +358,8 @@ let ignoreNextMove = false;
 
 const handImg = new Image();
 handImg.src = 'assets/images/hand_horror_2.png';
+const clawImg = new Image();
+clawImg.src = 'assets/images/claw1.png';
 
 const handCanvas = document.createElement('canvas');
 handCanvas.width = W;
@@ -655,7 +657,7 @@ function updateEnemy(dt) {
   enemy.stepT += dt;
   if (enemy.stepT >= enemy.stepI) {
     enemy.stepT = 0;
-    footprints.push({ x: enemy.x, y: enemy.y, life: 10 });
+    footprints.push({ x: enemy.x, y: enemy.y, dir: enemy.dir, life: 10 });
     const eDist = Math.hypot(player.x - enemy.x, player.y - enemy.y);
     if (eDist < 12) {
       const vol = Math.max(0, 1 - eDist / 12);
@@ -927,15 +929,28 @@ function renderFootprints(hz) {
     const floorY = hz + (pH * FOCAL) / dist;
     if (floorY > H) continue;
 
-    const size = Math.max(2, 18 / dist);
+    const size = Math.max(4, 24 / dist);
     const alpha = (fp.life / 10) * (lampOn ? 0.7 : 0.12);
     if (alpha < 0.01) continue;
 
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = '#666';
-    ctx.beginPath();
-    ctx.ellipse(screenX, floorY, size, size * 0.5, 0, 0, Math.PI * 2);
-    ctx.fill();
+    if (clawImg.complete && clawImg.naturalWidth > 0) {
+      ctx.globalAlpha = alpha;
+      ctx.save();
+      ctx.translate(screenX, floorY);
+      const dir = fp.dir || 0;
+      let drawAngle = dir - pDir;
+      while (drawAngle < -Math.PI) drawAngle += Math.PI * 2;
+      while (drawAngle > Math.PI) drawAngle -= Math.PI * 2;
+      ctx.rotate(drawAngle);
+      ctx.drawImage(clawImg, -size, -size, size * 2, size * 2);
+      ctx.restore();
+    } else {
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = '#666';
+      ctx.beginPath();
+      ctx.ellipse(screenX, floorY, size, size * 0.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
   ctx.globalAlpha = 1;
 }
