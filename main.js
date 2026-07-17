@@ -114,16 +114,19 @@ function playPositionalSound(buf, vol) {
 
 function playWalkStep() {
   if (!audioCtx || !walkBuffer) return;
-  const half = walkBuffer.duration / 2;
-  const offset = (walkStep % 2) * half;
-  walkStep++;
-  const src = audioCtx.createBufferSource();
-  src.buffer = walkBuffer;
-  const g = audioCtx.createGain();
-  g.gain.value = 0.3;
-  src.connect(g);
-  g.connect(audioCtx.destination);
-  src.start(0, offset, half);
+  try {
+    const half = walkBuffer.duration / 2;
+    const offset = (walkStep % 2) * half;
+    walkStep++;
+    const src = audioCtx.createBufferSource();
+    src.buffer = walkBuffer;
+    const g = audioCtx.createGain();
+    g.gain.value = 0.3;
+    src.connect(g);
+    g.connect(audioCtx.destination);
+    src.onended = () => { src.disconnect(); g.disconnect(); };
+    src.start(0, offset, half);
+  } catch(e) { console.error('walkStep:', e); }
 }
 
 let inhaleAudio = null;
@@ -135,7 +138,6 @@ let sprintAudio = null;
 let stopRunAudio = null;
 let walkAudio = null;
 let runAudio = null;
-let lastWalkStep = -1;
 let walkDelay = 0;
 let walkDist = 0;
 let monsterSeen = [];
