@@ -165,11 +165,11 @@ function loadInhale() {
   }
   walkLAudio = new Audio('assets/audio/walkl.mp3');
   walkLAudio.volume = 0.3;
-  walkLAudio.playbackRate = 0.88;
+  walkLAudio.playbackRate = 0.95;
   walkLAudio.preload = 'auto';
   walkRAudio = new Audio('assets/audio/walkr.mp3');
   walkRAudio.volume = 0.3;
-  walkRAudio.playbackRate = 0.88;
+  walkRAudio.playbackRate = 0.95;
   walkRAudio.preload = 'auto';
   runAudio = new Audio('assets/audio/running1.mp3');
   runAudio.loop = true;
