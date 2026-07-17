@@ -117,7 +117,7 @@ function playWalkStep() {
     const half = (walkAudio.duration > 0) ? walkAudio.duration / 2 : 0.3;
     walkAudio.currentTime = (walkStep % 2) * half;
     walkStep++;
-    walkAudio.play().catch(() => {});
+    walkAudio.play().catch(e => console.error('walkPlay:', e));
   } catch(e) { console.error('walkStep:', e); }
 }
 
@@ -753,7 +753,6 @@ function update(dt) {
       if (breathingAudio && !breathingAudio.paused) breathingAudio.pause();
       sprintAudio.play().catch(() => {});
       if (runAudio) { runAudio.currentTime = 0; runAudio.play().catch(() => {}); }
-      if (walkAudio) { walkAudio.pause(); walkAudio.currentTime = 0; }
     } else if (!shouldSprint && !sprintAudio.paused) {
       sprintAudio.pause();
       sprintAudio.currentTime = 0;
