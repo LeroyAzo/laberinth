@@ -121,7 +121,6 @@ let sprintAudio = null;
 let stopRunAudio = null;
 let runAudio = null;
 let walkDelay = 0;
-let lastWalkStep = -1;
 let walkStep = 0;
 let walkTimer = 0;
 let walkLAudio = null;
