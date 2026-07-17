@@ -855,7 +855,7 @@ function update(dt) {
     walkDist += actualDist;
     if (walkDist >= 0.2 && walkDelay <= 0) {
       walkDist = 0;
-      playWalkStep();
+      try { playWalkStep(); } catch(e) { console.error('walk:', e); }
     }
   }
 
@@ -1432,8 +1432,8 @@ function loop(now) {
   frameCount++;
   fpsTimer += dt;
   if (fpsTimer >= 0.5) { fps = Math.round(frameCount / fpsTimer); frameCount = 0; fpsTimer = 0; }
-  update(dt);
   render(now);
+  update(dt);
   } catch(e) { console.error(e); }
   requestAnimationFrame(loop);
 }
