@@ -733,6 +733,7 @@ function updateEnemy(dt) {
 }
 
 function update(dt) {
+  try {
   if (breathingAudio) {
     if (breathingAudio.paused) {
       if (gameState === 'playing' && !isHoldingBreath && !exhalePlaying && !isSprinting && !(stopRunAudio && !stopRunAudio.paused) && !gameOver && !player.won) {
@@ -858,7 +859,8 @@ function update(dt) {
     }
   }
 
-  try { updateEnemy(dt); } catch(e) { console.error('updateEnemy:', e); }
+  try{updateEnemy(dt)}catch(e){console.error('updateEnemy:',e)}
+  }catch(e){console.error('update:',e)}
 }
 
 const BAYER = [
@@ -1442,3 +1444,4 @@ buildNavGrid();
 buildRouteTable();
 spawnEnemy();
 requestAnimationFrame((now) => { last = now; loop(now); });
+\n}catch(e){console.error('update:',e)}
