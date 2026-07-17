@@ -161,6 +161,7 @@ function loadInhale() {
     monsterRoar.push(a);
   }
   walkAudio = new Audio('assets/audio/walk1.mp3');
+  walkAudio.playbackRate = 1.35;
   walkAudio.preload = 'auto';
   runAudio = new Audio('assets/audio/running1.mp3');
   runAudio.loop = true;
