@@ -112,11 +112,9 @@ function playPositionalSound(buf, vol) {
 }
 
 function playWalkStep() {
-  if (!walkAudio) return;
+  if (!walkAudio) { console.log('walk: no audio'); return; }
   try {
-    const half = (walkAudio.duration && walkAudio.duration > 0) ? walkAudio.duration / 2 : 0.3;
-    walkAudio.currentTime = (walkStep % 2) * half;
-    walkStep++;
+    console.log('walk: step', walkStep);
     walkAudio.play().catch(e => console.error('walkPlay:', e));
   } catch(e) { console.error('walkStep:', e); }
 }
@@ -132,6 +130,7 @@ let walkAudio = null;
 let runAudio = null;
 let walkDelay = 0;
 let walkDist = 0;
+let walkTimer = 0;
 let monsterSeen = [];
 let monsterRoar = [];
 let seenBuffers = [];
@@ -849,12 +848,12 @@ function update(dt) {
     player.winTime = performance.now();
   }
 
-  if (!isSprinting) {
+  if (!isSprinting && moving) {
     if (walkDelay > 0) walkDelay -= dt;
-    const actualDist = Math.hypot(player.x - prevPx, player.y - prevPy);
-    walkDist += actualDist;
-    if (walkDist >= 0.2 && walkDelay <= 0) {
-      walkDist = 0;
+    walkTimer += dt;
+    if (walkTimer >= 0.5 && walkDelay <= 0) {
+      walkTimer = 0;
+      console.log('walk: fire');
       try { playWalkStep(); } catch(e) { console.error('walk:', e); }
     }
   }
@@ -1348,6 +1347,7 @@ function restartGame() {
   moveT = 0;
   walkDist = 0;
   walkDelay = 0;
+  walkTimer = 0;
   walkStep = 0;
   footprints = [];
   dust = [];
