@@ -914,16 +914,7 @@ function renderFootprints(hz) {
     while (rel < -Math.PI) rel += Math.PI * 2;
     while (rel > Math.PI) rel -= Math.PI * 2;
     if (Math.abs(rel) > HALF_FOV + 0.1) continue;
-    const ray = { x: player.x, y: player.y };
-    const steps = Math.ceil(dist * 3);
-    let blocked = false;
-    for (let s = 1; s <= steps; s++) {
-      const t = s / steps;
-      const cx = player.x + dx * t;
-      const cy = player.y + dy * t;
-      if (isWall(cx, cy)) { blocked = true; break; }
-    }
-    if (blocked) continue;
+    if (!hasLineOfSight(player.x, player.y, fp.x, fp.y)) continue;
 
     const screenX = (rel / HALF_FOV + 1) / 2 * W;
     const floorY = hz + (pH * FOCAL) / dist;
