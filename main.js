@@ -359,7 +359,7 @@ let ignoreNextMove = false;
 const handImg = new Image();
 handImg.src = 'assets/images/hand_horror_2.png';
 const clawImg = new Image();
-clawImg.src = 'assets/images/claw1.png';
+clawImg.src = 'assets/images/claw3.png';
 
 const handCanvas = document.createElement('canvas');
 handCanvas.width = W;
