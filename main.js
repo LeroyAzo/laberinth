@@ -119,15 +119,16 @@ let exhalePlaying = false;
 let breathingAudio = null;
 let sprintAudio = null;
 let stopRunAudio = null;
-let walkAudio = null;
 let runAudio = null;
 let walkDelay = 0;
 let lastWalkStep = -1;
+let walkStep = 0;
+let walkLAudio = null;
+let walkRAudio = null;
 let monsterSeen = [];
 let monsterRoar = [];
 let seenBuffers = [];
 let roarBuffers = [];
-let walkStep = 0;
 
 function loadInhale() {
   inhaleAudio = new Audio('assets/audio/inhalo_horror1.mp3');
@@ -162,10 +163,12 @@ function loadInhale() {
     a.preload = 'auto';
     monsterRoar.push(a);
   }
-  walkAudio = new Audio('assets/audio/walk1.mp3');
-  walkAudio.volume = 0.3;
-  walkAudio.playbackRate = 1.35;
-  walkAudio.preload = 'auto';
+  walkLAudio = new Audio('assets/audio/walkl.mp3');
+  walkLAudio.volume = 0.3;
+  walkLAudio.preload = 'auto';
+  walkRAudio = new Audio('assets/audio/walkr.mp3');
+  walkRAudio.volume = 0.3;
+  walkRAudio.preload = 'auto';
   runAudio = new Audio('assets/audio/running1.mp3');
   runAudio.loop = true;
   runAudio.volume = 0.4;
@@ -846,7 +849,9 @@ function update(dt) {
   const step = Math.floor(moveT * 0.8 / Math.PI);
   if (moving && step !== lastWalkStep && !isSprinting && walkDelay <= 0) {
     lastWalkStep = step;
-    if (walkAudio && walkAudio.paused) { walkAudio.currentTime = 0; walkAudio.play().catch(() => {}); }
+    const a = (walkStep % 2) ? walkRAudio : walkLAudio;
+    walkStep++;
+    if (a && a.paused) { a.currentTime = 0; a.play().catch(() => {}); }
   }
 
   try{updateEnemy(dt)}catch(e){console.error('updateEnemy:',e)}
