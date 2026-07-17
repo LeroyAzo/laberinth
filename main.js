@@ -849,9 +849,11 @@ function update(dt) {
   const step = Math.floor(moveT * 1.04 / Math.PI);
   if (moving && step !== lastWalkStep && !isSprinting && walkDelay <= 0) {
     lastWalkStep = step;
-    const a = (walkStep % 2) ? walkRAudio : walkLAudio;
+    const isLeft = walkStep % 2 === 0;
+    const a = isLeft ? walkLAudio : walkRAudio;
     walkStep++;
     if (a && a.paused) { a.currentTime = 0; a.play().catch(() => {}); }
+    if (isLeft) walkDelay = 0.07;
   }
 
   try{updateEnemy(dt)}catch(e){console.error('updateEnemy:',e)}
