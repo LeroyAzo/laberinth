@@ -846,7 +846,7 @@ function update(dt) {
   if (!isSprinting && moving) {
     if (walkDelay > 0) walkDelay -= dt;
   }
-  const step = Math.floor(moveT * 0.8 / Math.PI);
+  const step = Math.floor(moveT * 1.04 / Math.PI);
   if (moving && step !== lastWalkStep && !isSprinting && walkDelay <= 0) {
     lastWalkStep = step;
     const a = (walkStep % 2) ? walkRAudio : walkLAudio;
