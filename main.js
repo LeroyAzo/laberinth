@@ -937,12 +937,10 @@ function renderFootprints(hz) {
       ctx.globalAlpha = alpha;
       ctx.save();
       ctx.translate(screenX, floorY);
+      ctx.transform(size / 12, 0, 0, size / 24, 0, 0);
       const dir = fp.dir || 0;
-      let drawAngle = dir - pDir;
-      while (drawAngle < -Math.PI) drawAngle += Math.PI * 2;
-      while (drawAngle > Math.PI) drawAngle -= Math.PI * 2;
-      ctx.rotate(drawAngle);
-      ctx.drawImage(clawImg, -size, -size, size * 2, size * 2);
+      ctx.rotate(dir - pDir);
+      ctx.drawImage(clawImg, -12, -12, 24, 24);
       ctx.restore();
     } else {
       ctx.globalAlpha = alpha;

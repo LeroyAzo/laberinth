@@ -1,0 +1,203 @@
+LABERINTH DEL HORROR - CHANGELOG
+==================================
+INDICE
+------
+1.  Primer commit (fd9c0b2) - Commit inicial del proyecto
+2.  Add walk footsteps using walk1.mp3, positional monster sounds, roar timer (9c93ed6)
+3.  Use running1.mp3 for sprint, walk1.mp3 for walking (1e9ce87)
+4.  Stop prev footstep audio on step type switch (280f739)
+5.  runAudio loops while sprinting alongside sprintAudio, walk per-step only (8ea2686)
+6.  stopRunAudio vol 0.3, instant walk->run switch, 0.5s walk delay after sprint (d818a8a)
+7.  Walk footsteps based on actual distance (0.5m walk, 0.8m sprint), not key state (2ad4533)
+8.  Walk step only plays if prev walk audio finished (paused) (bec2117)
+9.  Revert "Walk step only plays if prev walk audio finished (paused)" (ab65971)
+10. Revert "Walk footsteps based on actual distance (0.5m walk, 0.8m sprint), not key state" (2fe8696)
+11. Walk step waits for audio to finish before replaying (d248e87)
+12. Debug starts disabled, toggle with 0 (cbab802)
+13. Full reset on restart: enemy state, huntT, PID, walk vars (aa7d0ce)
+14. Walk footstep playback rate 1.35x for natural pace (3e7d90e)
+15. Distance-based footsteps: every 0.2m play left/right step from walk1.mp3 buffer (ce19ef0)
+16. Fix walk step: try-catch + cleanup nodes on ended (79c5311)
+17. Extra guard for walk buffer duration <= 0 (52f243e)
+18. Simplify walk step: use HTML Audio element with currentTime offset instead of Web Audio buffer (395a679)
+19. Fix: render runs before update, always draws even if update errors (c6d79f5)
+20. Use fixed 0.3s step offset instead of walkAudio.duration (ac393c5)
+21. Full try-catch in update(), render() always runs (5ea9082)
+22. Fix syntax: remove leftover garbage from node script (2a9f8d3)
+23. Use audio duration with fallback 0.3s if not loaded (e32206b)
+24. Show walk play errors in console, remove redundant walkAudio pause (cb85f6b)
+25. Simplify walk step: play whole file, no L/R split (2af8ade)
+26. Fix walk steps: use audio.duration/2 for correct L/R split (2.18s file) (1dbf09f)
+27. Debug walk: simple timer trigger, console logs (06ac756)
+28. Debug walk: add audio load events, state logging (a77eabf)
+29. Revert to non-distance walk steps (moveT-based), remove debug logs (b723cd5)
+30. Remove unused walkDist, prevPx vars (772f7d0)
+31. Use walkl.mp3 / walkr.mp3 alternating for footsteps (9c91c20)
+32. Increase walk step frequency (1.04 vs 0.8 multiplier) (d003ea5)
+33. Add 0.07s extra delay after left step for gait asymmetry (b4dd99b)
+34. Timer-based walk steps with asymmetric intervals (0.38L/0.32R) (e00f94a)
+35. Remove unused lastWalkStep var (3e678e8)
+36. Swap intervals: right-left (0.38) longer than left-right (0.32) (390890f)
+37. Increase walk asymmetry: L-R 0.28s, R-L 0.44s (a0b28be)
+38. More walk asymmetry: L-R 0.24s, R-L 0.52s (846585a)
+39. Walk: L-R 0.32s, R-L 0.68s (more asymmetry) (dd49ebc)
+40. Walk steps playback rate 0.88 for deeper tone (996971f)
+41. Fix playbackRate to 0.95: deeper tone without slowing down (15c3fcd)
+42. Remove playbackRate, back to original walk tone (4150c4d)
+43. Enemy footprints use claw1.png texture with rotation (2a3418f)
+
+================================================================================
+1.  Primer commit (fd9c0b2)
+    Commit inicial del proyecto. Sube todos los archivos del proyecto:
+    main.js, index.html, assets de audio e imagenes, package.json, .gitignore.
+
+2.  Add walk footsteps using walk1.mp3, positional monster sounds, roar timer (9c93ed6)
+    Agrega sonido de pasos al caminar (walk1.mp3), sonidos posicionales para el
+    monstruo (monster_seen / monster_roar) usando StereoPannerNode, y timer de
+    rugidos aleatorios en patrulla.
+
+3.  Use running1.mp3 for sprint, walk1.mp3 for walking (1e9ce87)
+    Separa los sonidos de caminar (walk1.mp3) y correr (running1.mp3).
+    Al correr usa running1.mp3, al caminar walk1.mp3.
+
+4.  Stop prev footstep audio on step type switch (280f739)
+    Detiene el audio del paso anterior al cambiar de caminar a correr o
+    viceversa, evitando solapamiento entre walk1.mp3 y running1.mp3.
+
+5.  runAudio loops while sprinting alongside sprintAudio, walk per-step only (8ea2686)
+    running1.mp3 se reproduce en loop mientras se corre (junto con sprint1.mp3
+    de respiracion). walk1.mp3 solo por paso al caminar.
+
+6.  stopRunAudio vol 0.3, instant walk->run switch, 0.5s walk delay after sprint (d818a8a)
+    Baja volumen de stop_run1.mp3 a 0.3. Al apretar shift se pausa walkAudio
+    inmediatamente. Al soltar shift espera 0.5s antes de reanudar pasos al caminar.
+
+7.  Walk footsteps based on actual distance (0.5m walk, 0.8m sprint), not key state (2ad4533)
+    Pasos basados en distancia REAL recorrida (0.5m para caminar, 0.8m para
+    correr), no en estado de teclas. Evita pasos al estar contra una pared.
+
+8.  Walk step only plays if prev walk audio finished (paused) (bec2117)
+    Solo reproduce un paso si el anterior ya termino (walkAudio.paused).
+
+9.  Revert "Walk step only plays if prev walk audio finished (paused)" (ab65971)
+    Revierte el commit bec2117.
+
+10. Revert "Walk footsteps based on actual distance..." (2fe8696)
+    Revierte el commit 2ad4533. Vuelve a pasos basados en moveT.
+
+11. Walk step waits for audio to finish before replaying (d248e87)
+    Similar a bec2117: espera a que el paso anterior termine antes de reproducir
+    el siguiente.
+
+12. Debug starts disabled, toggle with 0 (cbab802)
+    Debug (info en pantalla + minimapa) comienza desactivado. Se activa con tecla 0.
+
+13. Full reset on restart: enemy state, huntT, PID, walk vars (aa7d0ce)
+    Al reiniciar el juego, resetea completamente el estado del enemigo:
+    state='patrol', huntT=0, PID reiniciado, walkDelay=0.
+
+14. Walk footstep playback rate 1.35x for natural pace (3e7d90e)
+    Aumenta velocidad de reproduccion de walk1.mp3 a 1.35x para que los pasos
+    se escuchen a un ritmo mas natural.
+
+15. Distance-based footsteps: every 0.2m play left/right step from walk1.mp3 buffer (ce19ef0)
+    (REVERTIDO) Pasos cada 0.2m usando Web Audio API con buffer de walk1.mp3.
+    Alternaba entre mitad izquierda y derecha del audio.
+
+16. Fix walk step: try-catch + cleanup nodes on ended (79c5311)
+    Agrega try-catch a playWalkStep() y limpia nodos de audio al terminar.
+
+17. Extra guard for walk buffer duration <= 0 (52f243e)
+    Agrega guardia por si walkBuffer.duration es 0 o negativo.
+
+18. Simplify walk step: use HTML Audio element with currentTime offset (395a679)
+    Cambia de Web Audio API a HTML AudioElement para los pasos, usando
+    currentTime con offset para alternar izquierda/derecha.
+
+19. Fix: render runs before update (c6d79f5)
+    render() ahora se ejecuta ANTES que update() en el game loop, para que
+    la pantalla siempre se dibuje aunque update() falle.
+
+20. Use fixed 0.3s step offset instead of walkAudio.duration (ac393c5)
+    Usa offset fijo de 0.3s para alternar izquierda/derecha en vez de
+    audio.duration/2 (que podia ser NaN).
+
+21. Full try-catch in update() (5ea9082)
+    Envuelve todo update() en try-catch para que errores no detengan el juego.
+
+22. Fix syntax: remove leftover garbage from node script (2a9f8d3)
+    Limpia codigo basura que un script de node dejo al final del archivo.
+
+23. Use audio duration with fallback 0.3s if not loaded (e32206b)
+    Usa audio.duration/2 con fallback a 0.3s si duration no esta disponible.
+
+24. Show walk play errors in console (cb85f6b)
+    Muestra errores de walkAudio.play() en consola para debug. Elimina la
+    pausa redundante de walkAudio al correr.
+
+25. Simplify walk step: play whole file, no L/R split (2af8ade)
+    Reproduce walk1.mp3 completo sin dividir en izquierda/derecha. Simplifica
+    playWalkStep().
+
+26. Fix walk steps: use audio.duration/2 for correct L/R split (1dbf09f)
+    Corrige el split izquierda/derecha usando audio.duration/2 (walk1.mp3
+    mide 2.18s, mitad = 1.09s, no 0.3s como se usaba antes).
+
+27. Debug walk: simple timer trigger, console logs (06ac756)
+    Agrega logs de consola para debuggear los pasos al caminar.
+
+28. Debug walk: add audio load events, state logging (a77eabf)
+    Agrega logs de eventos de carga de walkAudio y su estado.
+
+29. Revert to non-distance walk steps (moveT-based), remove debug logs (b723cd5)
+    Revierte a pasos basados en moveT (no distancia). Elimina logs de debug.
+
+30. Remove unused walkDist, prevPx vars (772f7d0)
+    Limpia variables no usadas walkDist y prevPx/prevPy del codigo.
+
+31. Use walkl.mp3 / walkr.mp3 alternating for footsteps (9c91c20)
+    Reemplaza walk1.mp3 por walkl.mp3 (paso izquierdo) y walkr.mp3
+    (paso derecho), alternandolos al caminar.
+
+32. Increase walk step frequency (1.04 vs 0.8 multiplier) (d003ea5)
+    Aumenta frecuencia de pasos cambiando multiplicador de moveT de 0.8 a 1.04.
+
+33. Add 0.07s extra delay after left step for gait asymmetry (b4dd99b)
+    Agrega 0.07s de delay extra despues del paso izquierdo para compensar
+    el silencio al final de los audios.
+
+34. Timer-based walk steps with asymmetric intervals (0.38L/0.32R) (e00f94a)
+    Cambia a timer fijo con intervalos asimetricos: izquierda->derecha 0.38s,
+    derecha->izquierda 0.32s. Elimina dependencia de moveT para los pasos.
+
+35. Remove unused lastWalkStep var (3e678e8)
+    Elimina variable lastWalkStep ya no usada con el nuevo sistema de timer.
+
+36. Swap intervals: right-left longer than left-right (390890f)
+    Intercambia intervalos: derecha->izquierda (0.38) mas largo que
+    izquierda->derecha (0.32).
+
+37. Increase walk asymmetry: L-R 0.28s, R-L 0.44s (a0b28be)
+    Aumenta asimetria: izquierda->derecha 0.28s, derecha->izquierda 0.44s.
+
+38. More walk asymmetry: L-R 0.24s, R-L 0.52s (846585a)
+    Aun mas asimetria: izquierda->derecha 0.24s, derecha->izquierda 0.52s.
+
+39. Walk: L-R 0.32s, R-L 0.68s (more asymmetry) (dd49ebc)
+    Ajuste final de asimetria: izquierda->derecha 0.32s (vuelve al valor
+    anterior), derecha->izquierda 0.68s (aumentado).
+
+40. Walk steps playback rate 0.88 for deeper tone (996971f)
+    Baja playbackRate a 0.88 para que los pasos se escuchen mas graves.
+
+41. Fix playbackRate to 0.95: deeper without slowing down (15c3fcd)
+    Sube playbackRate a 0.95 (0.88 ralentizaba demasiado). Se mantiene
+    el tono grave pero sin relentizar el ritmo.
+
+42. Remove playbackRate, back to original walk tone (4150c4d)
+    Elimina playbackRate por completo. Los pasos vuelven al tono original.
+
+43. Enemy footprints use claw1.png texture with rotation (2a3418f)
+    Las pisadas del monstruo ahora usan la textura claw1.png. Se renderizan
+    en el piso con rotacion segun la direccion del monstruo y opacidad que
+    disminuye con el tiempo.
