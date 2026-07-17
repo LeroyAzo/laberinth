@@ -1331,15 +1331,23 @@ function restartGame() {
   player.won = false; player.winTime = 0;
   stamina.cur = stamina.max;
   moveT = 0;
+  walkDelay = 0;
+  lastWalkStep = -1;
   footprints = [];
   dust = [];
   gameOver = false;
+  enemy.state = 'patrol';
+  enemy.huntT = 0;
   enemy.patrolTarget = null;
   enemy.patrolWait = 0;
   enemy.targetCell = null;
   enemy.cellTimer = 0;
   enemy.stuckTimer = 0;
   enemy.roarTimer = 15 + Math.random() * 45;
+  enemy.prevDist = undefined;
+  enemy.pidIntegral = 0;
+  enemy.pidPrevError = 0;
+  enemy.routeDir = 0;
   spawnEnemy();
 }
 
