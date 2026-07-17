@@ -848,7 +848,7 @@ function update(dt) {
       walkDelay -= dt;
     } else {
       walkTimer += dt;
-      const interval = (walkStep % 2 === 0) ? 0.32 : 0.38;
+      const interval = (walkStep % 2 === 0) ? 0.28 : 0.44;
       if (walkTimer >= interval) {
         walkTimer = 0;
         const a = (walkStep % 2 === 0) ? walkLAudio : walkRAudio;
