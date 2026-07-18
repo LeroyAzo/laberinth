@@ -344,6 +344,8 @@ const player = {
 const stamina = { cur: 100, max: 100 };
 let staminaAlpha = 0;
 let lampOn = true;
+let lampMult = 1;
+let lampFlickerTimer = 0;
 let isSprinting = false;
 let isHoldingBreath = false;
 let wasHoldingBreath = false;
@@ -780,6 +782,19 @@ function update(dt) {
     if (keys['d'] || keys['arrowright']) { mx -= sin; my += cos; }
   }
   if (keys['q']) { keys['q'] = false; lampOn = !lampOn; }
+  if (lampOn) {
+    if (lampFlickerTimer > 0) {
+      lampFlickerTimer -= dt;
+      lampMult = 0.15 + Math.random() * 0.2;
+    } else {
+      lampMult += (1 - lampMult) * 5 * dt;
+      if (lampMult > 0.99) lampMult = 1;
+      if (Math.random() < dt * 1.5) lampFlickerTimer = 0.04 + Math.random() * 0.1;
+    }
+  } else {
+    lampMult = 1;
+    lampFlickerTimer = 0;
+  }
   player.dir %= Math.PI * 2;
   if (player.dir < 0) player.dir += Math.PI * 2;
   const len = Math.hypot(mx, my);
@@ -1049,7 +1064,7 @@ function render(time) {
     let wallBr, ceilBr, floorBr;
     if (lampOn) {
       const d = hit ? perpDist : 6;
-      const b = Math.max(0.04, 1 / (1 + d * 0.5 + d * d * 0.2));
+      const b = Math.max(0.04, 1 / (1 + d * 0.5 + d * d * 0.2)) * lampMult;
       wallBr = b;
       ceilBr = b * 0.3;
       floorBr = hit ? b * 0.25 : b * 0.15;
