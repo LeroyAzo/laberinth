@@ -950,16 +950,6 @@ function renderFootprints(hz) {
     while (rel > Math.PI) rel -= Math.PI * 2;
     if (Math.abs(rel) > HALF_FOV + 0.1) continue;
     if (!hasLineOfSight(player.x, player.y, fp.x, fp.y)) continue;
-    const rCheck = 0.25;
-    const CHK_X = [0, 1, -1, 0, 0];
-    const CHK_Y = [0, 0, 0, 1, -1];
-    let blocked = false;
-    for (let k = 0; k < CHK_X.length; k++) {
-      if (!hasLineOfSight(player.x, player.y, fp.x + CHK_X[k] * rCheck, fp.y + CHK_Y[k] * rCheck)) {
-        blocked = true; break;
-      }
-    }
-    if (blocked) continue;
 
     const screenX = (rel / HALF_FOV + 1) / 2 * W;
     const floorY = hz + (pH * FOCAL) / dist;
