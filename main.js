@@ -249,6 +249,20 @@ function spawnEnemy() {
   enemy.y = close.y + 0.5;
 }
 
+function spawnTestItems() {
+  items = [];
+  const types = ['key_exit', 'key_fake1', 'key_fake2', 'battery', 'map_piece'];
+  for (let i = 0; i < types.length; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const dist = 2 + Math.random() * 3;
+    let x = player.x + Math.cos(a) * dist;
+    let y = player.y + Math.sin(a) * dist;
+    if (x >= 0 && x < MAP_W && y >= 0 && y < MAP_H && !isWall(x, y)) {
+      items.push({ x, y, type: types[i], collected: false });
+    }
+  }
+}
+
 function hasLineOfSight(x1, y1, x2, y2) {
   const dx = x2 - x1, dy = y2 - y1;
   const dist = Math.hypot(dx, dy);
@@ -338,6 +352,8 @@ let gameOverTime = 0;
 let debug = false;
 let footprints = [];
 let dust = [];
+let items = [];
+let inventory = { keys: 0, batteries: 0, maps: 0 };
 
 const player = {
   x: 1.5, y: 1.5, dir: 0, pitch: 0,
@@ -895,6 +911,17 @@ function update(dt) {
     }
   }
 
+  for (const item of items) {
+    if (item.collected) continue;
+    const d = Math.hypot(player.x - item.x, player.y - item.y);
+    if (d < 0.5) {
+      item.collected = true;
+      if (item.type === 'key_exit' || item.type === 'key_fake1' || item.type === 'key_fake2') inventory.keys++;
+      else if (item.type === 'battery') inventory.batteries++;
+      else if (item.type === 'map_piece') inventory.maps++;
+    }
+  }
+
   try{updateEnemy(dt)}catch(e){console.error('updateEnemy:',e)}
   }catch(e){console.error('update:',e)}
 }
@@ -979,6 +1006,57 @@ function renderFootprints(hz) {
   ctx.globalAlpha = 1;
 }
 
+function renderItems(hz) {
+  const pH = 0.5;
+  for (const item of items) {
+    if (item.collected) continue;
+    const dx = item.x - player.x;
+    const dy = item.y - player.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 0.3 || dist > 8) continue;
+    const angle = Math.atan2(dy, dx);
+    let rel = angle - pDir;
+    while (rel < -Math.PI) rel += Math.PI * 2;
+    while (rel > Math.PI) rel -= Math.PI * 2;
+    if (Math.abs(rel) > HALF_FOV + 0.1) continue;
+    if (!hasLineOfSight(player.x, player.y, item.x, item.y)) continue;
+    const screenX = (rel / HALF_FOV + 1) / 2 * W;
+    const floorY = hz + (pH * FOCAL) / dist;
+    const h = Math.max(4, 30 / dist);
+    const topY = floorY - h;
+    if (topY < 0 || floorY > H) continue;
+    const alpha = Math.min(1, 1 - dist / 8);
+    ctx.globalAlpha = alpha;
+    const cx = screenX, cy = topY + h / 2;
+    const s = h * 0.5;
+    ctx.fillStyle = item.type.startsWith('key') ? '#fd0' : item.type === 'battery' ? '#0d0' : item.type === 'map_piece' ? '#f80' : '#f44';
+    ctx.fillRect(cx - s, cy - s, s * 2, s * 2);
+    if (item.type.startsWith('key')) {
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(cx, cy, s * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(cx - s * 0.1, cy - s, s * 0.2, s * 0.8);
+    } else if (item.type === 'battery') {
+      ctx.fillStyle = '#afa';
+      ctx.fillRect(cx + s * 0.3, cy - s * 0.6, s * 0.2, s * 0.4);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(cx + s * 0.3, cy + s * 0.2, s * 0.2, s * 0.4);
+      ctx.fillStyle = '#888';
+      ctx.fillRect(cx - s * 0.3, cy - s * 0.3, s * 0.6, s * 0.6);
+    } else if (item.type === 'map_piece') {
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(cx - s * 0.4, cy - s * 0.4, s * 0.8, s * 0.8);
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - s * 0.4);
+      ctx.lineTo(cx + s * 0.2, cy);
+      ctx.lineTo(cx, cy + s * 0.4);
+      ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
 
 
 function renderDust(hz) {
@@ -1136,6 +1214,7 @@ function render(time) {
   }
 
   renderFootprints(hz);
+  renderItems(hz);
   renderDust(hz);
 
   if (lampOn) {
@@ -1172,6 +1251,12 @@ function render(time) {
     ctx.font = '12px monospace';
     ctx.textAlign = 'right';
     ctx.fillText(fps + ' FPS', W - 10, H - 10);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#aaa';
+    let invY = H - 30;
+    if (inventory.keys > 0) { ctx.fillStyle = '#fd0'; ctx.fillText('🔑 x' + inventory.keys, 10, invY); invY -= 16; }
+    if (inventory.batteries > 0) { ctx.fillStyle = '#0d0'; ctx.fillText('🔋 x' + inventory.batteries, 10, invY); invY -= 16; }
+    if (inventory.maps > 0) { ctx.fillStyle = '#f80'; ctx.fillText('🗺 x' + inventory.maps, 10, invY); invY -= 16; }
     if (debug) {
     ctx.textAlign = 'center';
     ctx.fillStyle = '#484';
@@ -1431,7 +1516,9 @@ function restartGame() {
   enemy.pidIntegral = 0;
   enemy.pidPrevError = 0;
   enemy.routeDir = 0;
+  inventory = { keys: 0, batteries: 0, maps: 0 };
   spawnEnemy();
+  spawnTestItems();
 }
 
 canvas.addEventListener('click', (e) => {
@@ -1510,4 +1597,5 @@ generateMaze();
 buildNavGrid();
 buildRouteTable();
 spawnEnemy();
+spawnTestItems();
 requestAnimationFrame((now) => { last = now; loop(now); });
