@@ -1268,14 +1268,30 @@ function render(time) {
     const nx = W - 10;
     let ny = 20;
     for (const n of notifications) {
-      const a = Math.min(1, n.timer * 2);
+      let offset = 0;
+      let a = 1;
+      if (n.timer > 1.5) {
+        const t = (n.timer - 1.5) / 0.5;
+        offset = (1 - t) * W;
+      } else if (n.timer < 0.5) {
+        const t = (0.5 - n.timer) / 0.5;
+        offset = t * W;
+        a = 1 - t;
+      }
       ctx.globalAlpha = a;
       ctx.font = '14px monospace';
-      ctx.fillStyle = '#844';
-      ctx.fillRect(nx - ctx.measureText(n.text).width - 10, ny - 11, ctx.measureText(n.text).width + 12, 18);
-      ctx.fillStyle = '#eaa';
-      ctx.fillText(n.text, nx, ny);
-      ny += 20;
+      const tw = ctx.measureText(n.text).width;
+      const bx = nx - tw - 10 + offset;
+      ctx.fillStyle = '#000';
+      ctx.fillRect(bx - 4, ny - 11, tw + 12, 18);
+      ctx.strokeStyle = '#888';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(bx - 4, ny - 11, tw + 12, 18, 3);
+      ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.fillText(n.text, nx + offset, ny);
+      ny += 22;
     }
     ctx.globalAlpha = 1;
     if (debug) {
