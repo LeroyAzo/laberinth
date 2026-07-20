@@ -1315,7 +1315,8 @@ function render(time) {
     }
   }
   }
-  // Non-debug minimap (always visible, fog of war)
+  if (!debug) {
+  // Non-debug minimap (fog of war)
   const mmw = MAP_W * MINIMAP_CELL;
   const mmh = MAP_H * MINIMAP_CELL;
   ctx.fillStyle = 'rgba(0,0,0,0.45)';
@@ -1339,6 +1340,7 @@ function render(time) {
   }
   ctx.fillStyle = isHoldingBreath ? '#66a' : '#d44';
   ctx.fillRect(MINIMAP_X + (player.x | 0) * MINIMAP_CELL - 2, MINIMAP_Y + (player.y | 0) * MINIMAP_CELL - 2, MINIMAP_CELL + 2, MINIMAP_CELL + 2);
+  }
 
   if (staminaAlpha > 0.01) {
     const sbw = 200, sbh = 14;
