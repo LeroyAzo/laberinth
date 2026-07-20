@@ -334,7 +334,6 @@ let gameOver = false;
 let gameOverTime = 0;
 let debug = false;
 let footprints = [];
-let fpParticles = [];
 let dust = [];
 
 const player = {
@@ -670,31 +669,8 @@ function updateEnemy(dt) {
   }
 
   for (let i = footprints.length - 1; i >= 0; i--) {
-    const fp = footprints[i];
-    fp.life -= dt;
-    if (fp.life > 0 && fp.life < 8 && Math.random() < dt * 4) {
-      const a = Math.random() * Math.PI * 2;
-      const r = Math.random() * 0.3;
-      fpParticles.push({
-        x: fp.x + Math.cos(a) * r,
-        y: fp.y + Math.sin(a) * r,
-        z: Math.random() * 0.1,
-        vx: (Math.random() - 0.5) * 0.3,
-        vy: (Math.random() - 0.5) * 0.3,
-        vz: -Math.random() * 0.2,
-        life: 0.5 + Math.random() * 0.5,
-        color: Math.random() < 0.5 ? '#a00' : '#111',
-      });
-    }
-    if (fp.life <= 0) footprints.splice(i, 1);
-  }
-  for (let i = fpParticles.length - 1; i >= 0; i--) {
-    const p = fpParticles[i];
-    p.x += p.vx * dt;
-    p.y += p.vy * dt;
-    p.z += p.vz * dt;
-    p.life -= dt;
-    if (p.life <= 0) fpParticles.splice(i, 1);
+    footprints[i].life -= dt;
+    if (footprints[i].life <= 0) footprints.splice(i, 1);
   }
 
   if (lampOn && Math.random() < 0.2 && dust.length < 30) {
@@ -990,35 +966,7 @@ function renderFootprints(hz) {
   ctx.globalAlpha = 1;
 }
 
-function renderFpParticles(hz) {
-  const pH = 0.5;
-  for (const p of fpParticles) {
-    const dx = p.x - player.x;
-    const dy = p.y - player.y;
-    const dist = Math.hypot(dx, dy);
-    if (dist < 0.3 || dist > 8) continue;
-    const angle = Math.atan2(dy, dx);
-    let rel = angle - pDir;
-    while (rel < -Math.PI) rel += Math.PI * 2;
-    while (rel > Math.PI) rel -= Math.PI * 2;
-    if (Math.abs(rel) > HALF_FOV + 0.1) continue;
 
-    const screenX = (rel / HALF_FOV + 1) / 2 * W;
-    const floorY = hz + (pH * FOCAL) / dist;
-    const vert = (p.z + 0.2) * 10;
-    const screenY = floorY - vert;
-    if (screenY < 0 || screenY > H) continue;
-
-    const size = Math.max(1, 6 / dist);
-    const alpha = Math.min(1, p.life * 2) * 0.7;
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = p.color;
-    ctx.beginPath();
-    ctx.arc(screenX, screenY, size, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.globalAlpha = 1;
-}
 
 function renderDust(hz) {
   if (!lampOn) return;
@@ -1175,7 +1123,6 @@ function render(time) {
   }
 
   renderFootprints(hz);
-  renderFpParticles(hz);
   renderDust(hz);
 
   if (lampOn) {
