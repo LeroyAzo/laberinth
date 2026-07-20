@@ -354,6 +354,7 @@ let footprints = [];
 let dust = [];
 let items = [];
 let inventory = { keys: 0, batteries: 0, maps: 0 };
+let notifications = [];
 
 const player = {
   x: 1.5, y: 1.5, dir: 0, pitch: 0,
@@ -916,10 +917,18 @@ function update(dt) {
     const d = Math.hypot(player.x - item.x, player.y - item.y);
     if (d < 0.5) {
       item.collected = true;
-      if (item.type === 'key_exit' || item.type === 'key_fake1' || item.type === 'key_fake2') inventory.keys++;
-      else if (item.type === 'battery') inventory.batteries++;
-      else if (item.type === 'map_piece') inventory.maps++;
+      let name = '';
+      if (item.type === 'key_exit' || item.type === 'key_fake1' || item.type === 'key_fake2') { inventory.keys++; name = 'Llave'; }
+      else if (item.type === 'battery') { inventory.batteries++; name = 'Batería'; }
+      else if (item.type === 'map_piece') { inventory.maps++; name = 'Mapa'; }
+      notifications.unshift({ text: name + ' recogido', timer: 2 });
+      if (notifications.length > 4) notifications.pop();
     }
+  }
+
+  for (let i = notifications.length - 1; i >= 0; i--) {
+    notifications[i].timer -= dt;
+    if (notifications[i].timer <= 0) notifications.splice(i, 1);
   }
 
   try{updateEnemy(dt)}catch(e){console.error('updateEnemy:',e)}
@@ -1029,8 +1038,6 @@ function renderItems(hz) {
     ctx.globalAlpha = alpha;
     const cx = screenX, cy = topY + h / 2;
     const s = h * 0.5;
-    ctx.fillStyle = item.type.startsWith('key') ? '#fd0' : item.type === 'battery' ? '#0d0' : item.type === 'map_piece' ? '#f80' : '#f44';
-    ctx.fillRect(cx - s, cy - s, s * 2, s * 2);
     if (item.type.startsWith('key')) {
       ctx.fillStyle = '#fff';
       ctx.beginPath();
@@ -1254,9 +1261,23 @@ function render(time) {
     ctx.textAlign = 'left';
     ctx.fillStyle = '#aaa';
     let invY = H - 30;
-    if (inventory.keys > 0) { ctx.fillStyle = '#fd0'; ctx.fillText('🔑 x' + inventory.keys, 10, invY); invY -= 16; }
-    if (inventory.batteries > 0) { ctx.fillStyle = '#0d0'; ctx.fillText('🔋 x' + inventory.batteries, 10, invY); invY -= 16; }
-    if (inventory.maps > 0) { ctx.fillStyle = '#f80'; ctx.fillText('🗺 x' + inventory.maps, 10, invY); invY -= 16; }
+    if (inventory.keys > 0) { ctx.fillStyle = '#fd0'; ctx.fillText('Llaves: ' + inventory.keys, 10, invY); invY -= 16; }
+    if (inventory.batteries > 0) { ctx.fillStyle = '#0d0'; ctx.fillText('Baterias: ' + inventory.batteries, 10, invY); invY -= 16; }
+    if (inventory.maps > 0) { ctx.fillStyle = '#f80'; ctx.fillText('Mapas: ' + inventory.maps, 10, invY); invY -= 16; }
+    ctx.textAlign = 'right';
+    const nx = W - 10;
+    let ny = 20;
+    for (const n of notifications) {
+      const a = Math.min(1, n.timer * 2);
+      ctx.globalAlpha = a;
+      ctx.font = '14px monospace';
+      ctx.fillStyle = '#844';
+      ctx.fillRect(nx - ctx.measureText(n.text).width - 10, ny - 11, ctx.measureText(n.text).width + 12, 18);
+      ctx.fillStyle = '#eaa';
+      ctx.fillText(n.text, nx, ny);
+      ny += 20;
+    }
+    ctx.globalAlpha = 1;
     if (debug) {
     ctx.textAlign = 'center';
     ctx.fillStyle = '#484';
