@@ -193,7 +193,7 @@ function playExhale(horror) {
 
 let maze;
 let revealed = [];
-let revealRadius = 3;
+let revealRadius = 1;
 let navCells = [];
 let navIndex = [];
 let NAV_N = 0;
