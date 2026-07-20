@@ -809,11 +809,11 @@ function update(dt) {
   if (lampOn) {
     if (lampFlickerTimer > 0) {
       lampFlickerTimer -= dt;
-      lampMult = 0.15 + Math.random() * 0.2;
+      lampMult = 0.35 + Math.random() * 0.25;
     } else {
       lampMult += (1 - lampMult) * 5 * dt;
       if (lampMult > 0.99) lampMult = 1;
-      if (Math.random() < dt * 1.5) lampFlickerTimer = 0.04 + Math.random() * 0.1;
+      if (Math.random() < dt * 0.4) lampFlickerTimer = 0.03 + Math.random() * 0.06;
     }
   } else {
     lampMult = 1;
