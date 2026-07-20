@@ -253,7 +253,7 @@ function hasLineOfSight(x1, y1, x2, y2) {
   const dx = x2 - x1, dy = y2 - y1;
   const dist = Math.hypot(dx, dy);
   if (dist < 0.3) return true;
-  const steps = Math.ceil(dist * 4);
+  const steps = Math.ceil(dist * 6);
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
     const cx = x1 + dx * t;
