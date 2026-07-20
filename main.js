@@ -1287,7 +1287,8 @@ function render(time) {
       ctx.strokeStyle = '#888';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.roundRect(bx - 4, ny - 11, tw + 12, 18, 3);
+      if (ctx.roundRect) ctx.roundRect(bx - 4, ny - 11, tw + 12, 18, 3);
+      else ctx.rect(bx - 4, ny - 11, tw + 12, 18);
       ctx.stroke();
       ctx.fillStyle = '#fff';
       ctx.fillText(n.text, nx + offset, ny);
