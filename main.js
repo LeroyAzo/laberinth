@@ -192,6 +192,8 @@ function playExhale(horror) {
 }
 
 let maze;
+let revealed = [];
+let revealRadius = 3;
 let navCells = [];
 let navIndex = [];
 let NAV_N = 0;
@@ -273,6 +275,7 @@ function buildNavGrid() {
     }
   }
   NAV_N = navCells.length;
+  revealed = Array.from({ length: MAP_H }, () => Array(MAP_W).fill(false));
 }
 
 function toCell(v) { return Math.floor(v); }
@@ -882,6 +885,16 @@ function update(dt) {
     }
   }
 
+  const px = player.x | 0, py = player.y | 0;
+  for (let dy = -revealRadius; dy <= revealRadius; dy++) {
+    for (let dx = -revealRadius; dx <= revealRadius; dx++) {
+      if (dx * dx + dy * dy <= revealRadius * revealRadius) {
+        const rx = px + dx, ry = py + dy;
+        if (rx >= 0 && rx < MAP_W && ry >= 0 && ry < MAP_H) revealed[ry][rx] = true;
+      }
+    }
+  }
+
   try{updateEnemy(dt)}catch(e){console.error('updateEnemy:',e)}
   }catch(e){console.error('update:',e)}
 }
@@ -1302,6 +1315,40 @@ function render(time) {
     }
   }
   }
+  // Non-debug minimap (always visible, fog of war)
+  if (true) {
+  const mmw = MAP_W * MINIMAP_CELL;
+  const mmh = MAP_H * MINIMAP_CELL;
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  ctx.fillRect(MINIMAP_X - 2, MINIMAP_Y - 2, mmw + 4, mmh + 4);
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      if (!revealed[y][x]) {
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(MINIMAP_X + x * MINIMAP_CELL, MINIMAP_Y + y * MINIMAP_CELL, MINIMAP_CELL, MINIMAP_CELL);
+      } else {
+        const v = maze[y][x];
+        if (v === 1) {
+          ctx.fillStyle = '#333';
+          ctx.fillRect(MINIMAP_X + x * MINIMAP_CELL, MINIMAP_Y + y * MINIMAP_CELL, MINIMAP_CELL, MINIMAP_CELL);
+        } else if (v === 2) {
+          ctx.fillStyle = '#282';
+          ctx.fillRect(MINIMAP_X + x * MINIMAP_CELL, MINIMAP_Y + y * MINIMAP_CELL, MINIMAP_CELL, MINIMAP_CELL);
+        }
+      }
+    }
+  }
+  ctx.fillStyle = isHoldingBreath ? '#66a' : '#d44';
+  ctx.fillRect(MINIMAP_X + (player.x | 0) * MINIMAP_CELL - 2, MINIMAP_Y + (player.y | 0) * MINIMAP_CELL - 2, MINIMAP_CELL + 2, MINIMAP_CELL + 2);
+  const ppx2 = MINIMAP_X + player.x * MINIMAP_CELL;
+  const ppy2 = MINIMAP_Y + player.y * MINIMAP_CELL;
+  ctx.strokeStyle = '#ee6';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(ppx2, ppy2);
+  ctx.lineTo(ppx2 + Math.cos(player.dir) * 20, ppy2 + Math.sin(player.dir) * 20);
+  ctx.stroke();
+  }
 
   if (staminaAlpha > 0.01) {
     const sbw = 200, sbh = 14;
@@ -1377,8 +1424,8 @@ function restartGame() {
   walkDelay = 0;
   walkStep = 0;
   footprints = [];
-  fpParticles = [];
   dust = [];
+  revealed = Array.from({ length: MAP_H }, () => Array(MAP_W).fill(false));
   gameOver = false;
   enemy.state = 'patrol';
   enemy.huntT = 0;
