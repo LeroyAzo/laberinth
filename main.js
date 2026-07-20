@@ -347,6 +347,7 @@ let staminaAlpha = 0;
 let lampOn = true;
 let lampMult = 1;
 let lampFlickerTimer = 0;
+let lampFlickerCooldown = 0;
 let isSprinting = false;
 let isHoldingBreath = false;
 let wasHoldingBreath = false;
@@ -809,15 +810,21 @@ function update(dt) {
   if (lampOn) {
     if (lampFlickerTimer > 0) {
       lampFlickerTimer -= dt;
-      lampMult = 0.35 + Math.random() * 0.25;
+      lampMult = 0.15 + Math.random() * 0.2;
     } else {
       lampMult += (1 - lampMult) * 5 * dt;
       if (lampMult > 0.99) lampMult = 1;
-      if (Math.random() < dt * 0.4) lampFlickerTimer = 0.03 + Math.random() * 0.06;
+      if (lampFlickerCooldown > 0) {
+        lampFlickerCooldown -= dt;
+      } else {
+        lampFlickerTimer = 0.04 + Math.random() * 0.1;
+        lampFlickerCooldown = 1 + Math.random() * 3;
+      }
     }
   } else {
     lampMult = 1;
     lampFlickerTimer = 0;
+    lampFlickerCooldown = 0;
   }
   player.dir %= Math.PI * 2;
   if (player.dir < 0) player.dir += Math.PI * 2;
