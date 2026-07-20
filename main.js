@@ -1272,7 +1272,7 @@ function render(time) {
       let a = 1;
       if (n.timer > 1.5) {
         const t = (n.timer - 1.5) / 0.5;
-        offset = (1 - t) * W;
+        offset = t * W;
       } else if (n.timer < 0.5) {
         const t = (0.5 - n.timer) / 0.5;
         offset = t * W;
