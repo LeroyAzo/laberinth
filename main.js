@@ -1037,13 +1037,14 @@ function renderItems(hz) {
     const alpha = Math.min(1, 1 - dist / 8);
     ctx.globalAlpha = alpha;
     const cx = screenX, cy = topY + h / 2;
-    const s = h * 0.5;
+    const s = h * 0.7;
     if (item.type.startsWith('key')) {
-      ctx.fillStyle = '#fff';
+      ctx.fillStyle = '#fd0';
       ctx.beginPath();
-      ctx.arc(cx, cy, s * 0.3, 0, Math.PI * 2);
+      ctx.arc(cx, cy, s * 0.35, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillRect(cx - s * 0.1, cy - s, s * 0.2, s * 0.8);
+      ctx.fillStyle = '#fd0';
+      ctx.fillRect(cx - s * 0.1, cy - s * 0.8, s * 0.2, s * 0.7);
     } else if (item.type === 'battery') {
       ctx.fillStyle = '#afa';
       ctx.fillRect(cx + s * 0.3, cy - s * 0.6, s * 0.2, s * 0.4);
@@ -1279,20 +1280,26 @@ function render(time) {
         a = 1 - t;
       }
       ctx.globalAlpha = a;
-      ctx.font = '14px monospace';
+      ctx.font = 'bold 16px monospace';
       const tw = ctx.measureText(n.text).width;
-      const bx = nx - tw - 10 + offset;
+      const pad = 14;
+      const boxW = tw + pad * 2;
+      const boxH = 28;
+      const boxX = nx - boxW + offset;
+      const boxY = ny - boxH / 2;
       ctx.fillStyle = '#000';
-      ctx.fillRect(bx - 4, ny - 11, tw + 12, 18);
+      ctx.fillRect(boxX, boxY, boxW, boxH);
       ctx.strokeStyle = '#888';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(bx - 4, ny - 11, tw + 12, 18, 3);
-      else ctx.rect(bx - 4, ny - 11, tw + 12, 18);
+      if (ctx.roundRect) ctx.roundRect(boxX, boxY, boxW, boxH, 4);
+      else ctx.rect(boxX, boxY, boxW, boxH);
       ctx.stroke();
       ctx.fillStyle = '#fff';
-      ctx.fillText(n.text, nx + offset, ny);
-      ny += 22;
+      ctx.textAlign = 'center';
+      ctx.fillText(n.text, boxX + boxW / 2, ny + 5);
+      ctx.textAlign = 'right';
+      ny += boxH + 6;
     }
     ctx.globalAlpha = 1;
     if (debug) {
