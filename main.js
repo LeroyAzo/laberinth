@@ -447,14 +447,21 @@ let texWalls = [];
 
 function findExitWalls() {
   texWalls = [];
-  const ex = CELLS_X * 2 - 1, ey = CELLS_Y * 2 - 1;
-  const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
-  for (const [dx, dy] of dirs) {
-    const wx = ex + dx, wy = ey + dy;
-    if (wx >= 0 && wx < MAP_W && wy >= 0 && wy < MAP_H && maze[wy][wx] === 1) {
-      texWalls.push({ x: wx, y: wy });
+  const cx = 1.5, cy = 1.5;
+  let best = Infinity;
+  let bx = -1, by = -1;
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      if (maze[y][x] === 1) {
+        const dist = Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
+        if (dist < best) {
+          best = dist;
+          bx = x; by = y;
+        }
+      }
     }
   }
+  if (bx >= 0) texWalls.push({ x: bx, y: by });
 }
 
 const handCanvas = document.createElement('canvas');
