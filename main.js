@@ -1541,10 +1541,6 @@ function render(time) {
     ctx.drawImage(handCanvas, 0, 0);
   }
 
-  ctx.fillStyle = 'rgba(100,25,25,0.5)';
-  ctx.font = '14px monospace';
-  ctx.textAlign = 'left';
-  ctx.fillText('WASD: mover | Shift: correr | Q: linterna | C: contener respiración', 10, H - 10);
 
   if (enemy.state === 'hunt') {
     const pulse = 0.6 + Math.sin(time * 0.005) * 0.4;
