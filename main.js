@@ -1233,25 +1233,40 @@ function renderItems(hz) {
 }
 
 
-function renderEIcon(hz) {
-  if (spawnDoorState !== 'closed') return;
-  const doorPX = Math.max(spawnDoorX, Math.min(spawnDoorX + 1, player.x));
-  const doorPY = Math.max(spawnDoorY, Math.min(spawnDoorY + 1, player.y));
-  const dist = Math.hypot(doorPX - player.x, doorPY - player.y);
+function renderEIcon() {
+  if (spawnDoorState !== 'closed' || spawnDoorX < 0) return;
+  const wallCX = spawnDoorX + 0.5, wallCY = spawnDoorY + 0.5;
+  const dx = player.x - wallCX, dy = player.y - wallCY;
+  let doorX, doorY;
+  if (Math.abs(dx) > Math.abs(dy)) {
+    doorX = spawnDoorX + (dx > 0 ? 1 : 0);
+    doorY = wallCY;
+  } else {
+    doorX = wallCX;
+    doorY = spawnDoorY + (dy > 0 ? 1 : 0);
+  }
+  const sx = doorX - player.x, sy = doorY - player.y;
+  const dist = Math.hypot(sx, sy);
   if (dist > 2 || dist < 0.1) return;
-  const promptH = 36;
-  const promptW = 32;
-  const screenX = W >> 1;
-  const screenY = H - 80;
-  const bx = screenX - promptW / 2;
-  const by = screenY - promptH / 2;
+  const angle = Math.atan2(sy, sx);
+  let rel = angle - pDir;
+  while (rel < -Math.PI) rel += Math.PI * 2;
+  while (rel > Math.PI) rel -= Math.PI * 2;
+  if (Math.abs(rel) > HALF_FOV + 0.2) return;
+  if (!hasLineOfSight(player.x, player.y, doorX, doorY)) return;
+  const screenX = (rel / HALF_FOV + 1) / 2 * W;
+  const pitchRad = player.pitch / FOCAL;
+  const screenY = HORIZON + FOCAL * Math.tan(pitchRad);
+  const s = Math.max(16, Math.min(48, 60 / dist));
+  const bx = screenX - s * 0.5;
+  const by = screenY - s * 0.5;
   ctx.fillStyle = 'rgba(0,0,0,0.65)';
-  ctx.fillRect(bx, by, promptW, promptH);
+  ctx.fillRect(bx, by, s, s);
   ctx.strokeStyle = '#ddd';
   ctx.lineWidth = 1.5;
-  ctx.strokeRect(bx, by, promptW, promptH);
+  ctx.strokeRect(bx, by, s, s);
   ctx.fillStyle = '#fff';
-  ctx.font = 'bold 24px monospace';
+  ctx.font = `bold ${(s * 0.55) | 0}px monospace`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('E', screenX, screenY);
@@ -1456,7 +1471,7 @@ function render(time) {
   renderFootprints(hz);
   renderItems(hz);
   renderDust(hz);
-  renderEIcon(hz);
+  renderEIcon();
 
   if (lampOn) {
     const cx = W >> 1, cy = HORIZON;
