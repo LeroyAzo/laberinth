@@ -1027,7 +1027,7 @@ function update(dt) {
       }
       else if (item.type === 'battery') { lampBattery = Math.min(10, lampBattery + 2); name = 'Batería'; }
       else if (item.type === 'map_piece') { inventory.maps++; name = 'Mapa'; }
-      notifications.unshift({ text: name + ' recogido', timer: 2 });
+      notifications.unshift({ text: name + ' recogido', timer: 3 });
       if (notifications.length > 4) notifications.pop();
     }
   }
