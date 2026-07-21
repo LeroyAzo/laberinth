@@ -444,6 +444,8 @@ const doorTex = new Image();
 doorTex.src = 'assets/images/green_door_closed.png';
 const doorMidTex = new Image();
 doorMidTex.src = 'assets/images/door_mid.png';
+const doorOpenTex = new Image();
+doorOpenTex.src = 'assets/images/door_open.png';
 
 let texWalls = [];
 
@@ -1025,7 +1027,20 @@ function update(dt) {
     player.won = true;
     player.winTime = performance.now();
   }
-  if (spawnDoorState === 'opening') {
+  if (keys['e']) {
+    keys['e'] = false;
+    if (spawnDoorState === 'closed' && Math.hypot(player.x - (spawnDoorX + 0.5), player.y - (spawnDoorY + 0.5)) < 2) {
+      spawnDoorState = 'mid';
+      spawnDoorTimer = 1;
+    }
+  }
+  if (spawnDoorState === 'mid') {
+    spawnDoorTimer -= dt;
+    if (spawnDoorTimer <= 0) {
+      spawnDoorState = 'open';
+      spawnDoorTimer = 1;
+    }
+  } else if (spawnDoorState === 'open') {
     spawnDoorTimer -= dt;
     if (spawnDoorTimer <= 0 && !player.won) {
       player.won = true;
@@ -1359,7 +1374,8 @@ function render(time) {
     if (hit && brightness > 0.005) {
       if (mapX === spawnDoorX && mapY === spawnDoorY) {
         if (spawnDoorState === 'closed' && doorTex.complete && doorTex.naturalWidth > 0) wallTex = doorTex;
-        else if (spawnDoorState === 'opening' && doorMidTex.complete && doorMidTex.naturalWidth > 0) wallTex = doorMidTex;
+        else if (spawnDoorState === 'mid' && doorMidTex.complete && doorMidTex.naturalWidth > 0) wallTex = doorMidTex;
+        else if (spawnDoorState === 'open' && doorOpenTex.complete && doorOpenTex.naturalWidth > 0) wallTex = doorOpenTex;
       } else if (texWalls.some(w => w.x === mapX && w.y === mapY) && doorTex.complete && doorTex.naturalWidth > 0) {
         wallTex = doorTex;
       }
@@ -1798,12 +1814,7 @@ canvas.addEventListener('click', (e) => {
   }
 
   if (mouseLocked) {
-    const dist = Math.hypot(player.x - (spawnDoorX + 0.5), player.y - (spawnDoorY + 0.5));
-    if (spawnDoorState === 'closed' && dist < 2) {
-      spawnDoorState = 'opening';
-      spawnDoorTimer = 3;
-      return;
-    }
+    // (interaction via E key in update)
   } else {
     initAudio();
     if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
