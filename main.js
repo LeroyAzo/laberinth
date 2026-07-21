@@ -1259,7 +1259,7 @@ function render(time) {
     ctx.font = '12px monospace';
     ctx.textAlign = 'right';
     ctx.fillText(fps + ' FPS', W - 10, H - 10);
-    const lx = -70;
+    const lx = -160;
     const ly = (H >> 1) - 120;
     const ls = 2;
     ctx.imageSmoothingEnabled = false;
