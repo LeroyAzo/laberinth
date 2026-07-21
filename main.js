@@ -1266,13 +1266,17 @@ function render(time) {
     const ly = (H >> 1) + lampOffY;
     const ls = 2;
     ctx.imageSmoothingEnabled = false;
-    if (lampImg.complete && lampImg.naturalWidth > 0) {
-      ctx.drawImage(lampImg, lx, ly, lampImg.naturalWidth * ls, lampImg.naturalHeight * ls);
-    }
-    const btn = lampOn ? lampBtnOnImg : lampBtnImg;
-    if (btn.complete && btn.naturalWidth > 0) {
-      ctx.drawImage(btn, lx, ly, btn.naturalWidth * ls, btn.naturalHeight * ls);
-    }
+    const drawRotated = (img) => {
+      if (!img || !img.complete || img.naturalWidth <= 0) return;
+      const iw = img.naturalWidth * ls, ih = img.naturalHeight * ls;
+      ctx.save();
+      ctx.translate(lx + ih / 2, ly + iw / 2);
+      ctx.rotate(Math.PI / 2);
+      ctx.drawImage(img, -iw / 2, -ih / 2, iw, ih);
+      ctx.restore();
+    };
+    drawRotated(lampImg);
+    drawRotated(lampOn ? lampBtnOnImg : lampBtnImg);
     ctx.imageSmoothingEnabled = true;
     ctx.textAlign = 'left';
     ctx.fillStyle = '#aaa';
