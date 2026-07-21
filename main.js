@@ -1031,8 +1031,14 @@ function update(dt) {
   if (keys['e']) {
     keys['e'] = false;
     if (spawnDoorState === 'closed' && Math.hypot(player.x - (spawnDoorX + 0.5), player.y - (spawnDoorY + 0.5)) < 2) {
-      spawnDoorState = 'mid';
-      spawnDoorTimer = 0.5;
+      if (inventory.keys > 0) {
+        inventory.keys--;
+        spawnDoorState = 'mid';
+        spawnDoorTimer = 0.5;
+      } else {
+        notifications.unshift({ text: 'Necesitas una llave', timer: 2 });
+        if (notifications.length > 4) notifications.pop();
+      }
     }
   }
   if (spawnDoorState === 'mid') {
