@@ -1460,7 +1460,6 @@ function render(time) {
     }
   }
   }
-  }
 
   if (staminaAlpha > 0.01) {
     const sbw = 200, sbh = 14;
