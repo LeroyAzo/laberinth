@@ -1235,6 +1235,7 @@ function drawButton(ctx, x, y, w, h, text) {
 }
 
 function render(time) {
+  ctx.imageSmoothingEnabled = false;
   const t = time * 0.001;
 
   let wobbleX = Math.sin(t * 1.3) * 0.008 + shakeX * 0.004;
