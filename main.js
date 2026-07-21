@@ -122,6 +122,8 @@ let stopRunAudio = null;
 let runAudio = null;
 let walkDelay = 0;
 let walkStep = 0;
+let lampOnAudio = null;
+let lampOffAudio = null;
 let walkTimer = 0;
 let walkLAudio = null;
 let walkRAudio = null;
@@ -173,6 +175,12 @@ function loadInhale() {
   runAudio.loop = true;
   runAudio.volume = 0.4;
   runAudio.preload = 'auto';
+  lampOnAudio = new Audio('assets/audio/lamp_on.mp3');
+  lampOnAudio.volume = 0.3;
+  lampOnAudio.preload = 'auto';
+  lampOffAudio = new Audio('assets/audio/lamp_off.mp3');
+  lampOffAudio.volume = 0.3;
+  lampOffAudio.preload = 'auto';
 }
 
 function playInhale() {
@@ -371,6 +379,7 @@ const player = {
 const stamina = { cur: 100, max: 100 };
 let staminaAlpha = 0;
 let lampOn = true;
+let prevLampOn = true;
 let lampMult = 1;
 let lampFlickerTimer = 0;
 let lampFlickerCooldown = 0;
@@ -410,6 +419,11 @@ for (let i = 0; i <= 10; i++) {
   img.src = 'assets/images/battery_' + i + '.png';
   batteryImgs.push(img);
 }
+const keyImgs = [];
+keyImgs.push(new Image()); keyImgs[0].src = 'assets/images/no_keys.png';
+keyImgs.push(new Image()); keyImgs[1].src = 'assets/images/one_key.png';
+keyImgs.push(new Image()); keyImgs[2].src = 'assets/images/two_keys.png';
+keyImgs.push(new Image()); keyImgs[3].src = 'assets/images/three_keys.png';
 
 const handCanvas = document.createElement('canvas');
 handCanvas.width = W;
@@ -834,6 +848,11 @@ function update(dt) {
     if (keys['d'] || keys['arrowright']) { mx -= sin; my += cos; }
   }
   if (keys['q']) { keys['q'] = false; lampOn = !lampOn; }
+  if (lampOn !== prevLampOn) {
+    if (lampOn && lampOnAudio) { lampOnAudio.currentTime = 0; lampOnAudio.play().catch(() => {}); }
+    if (!lampOn && lampOffAudio) { lampOffAudio.currentTime = 0; lampOffAudio.play().catch(() => {}); }
+    prevLampOn = lampOn;
+  }
   if (lampOn) {
     if (lampFlickerTimer > 0) {
       lampFlickerTimer -= dt;
@@ -1304,6 +1323,8 @@ function render(time) {
     };
     drawRotated(lCtx, lampImg);
     drawRotated(lCtx, batteryImgs[lampBattery]);
+    const ki = Math.min(3, inventory.keys);
+    if (keyImgs[ki]) drawRotated(lCtx, keyImgs[ki]);
     drawRotated(lCtx, lampOn ? lampBtnOnImg : lampBtnImg);
     if (!lampOn) {
       lCtx.globalCompositeOperation = 'source-atop';
@@ -1316,7 +1337,6 @@ function render(time) {
     ctx.textAlign = 'left';
     ctx.fillStyle = '#aaa';
     let invY = H - 30;
-    if (inventory.keys > 0) { ctx.fillStyle = '#fd0'; ctx.fillText('Llaves: ' + inventory.keys, 200, invY); invY -= 16; }
     if (inventory.maps > 0) { ctx.fillStyle = '#f80'; ctx.fillText('Mapas: ' + inventory.maps, 200, invY); invY -= 16; }
     ctx.textAlign = 'right';
     const nx = W - 10;
@@ -1570,6 +1590,8 @@ function restartGame() {
   walkStep = 0;
   lampBattery = 10;
   lampBatteryTimer = 0;
+  lampOn = true;
+  prevLampOn = true;
   footprints = [];
   dust = [];
   revealed = Array.from({ length: MAP_H }, () => Array(MAP_W).fill(false));
