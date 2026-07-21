@@ -625,6 +625,32 @@ function updateEnemy(dt) {
     return false;
   }
 
+  if (inventory.maps > 0) {
+    const mw = MAP_W * MINIMAP_CELL, mh = MAP_H * MINIMAP_CELL;
+    const mx = W - mw - 6, my = 6;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(mx - 2, my - 2, mw + 4, mh + 4);
+    for (let y = 0; y < MAP_H; y++) {
+      for (let x = 0; x < MAP_W; x++) {
+        if (!revealed[y][x]) {
+          ctx.fillStyle = '#1a1a1a';
+          ctx.fillRect(mx + x * MINIMAP_CELL, my + y * MINIMAP_CELL, MINIMAP_CELL, MINIMAP_CELL);
+        } else {
+          const v = maze[y][x];
+          if (v === 1) {
+            ctx.fillStyle = '#333';
+            ctx.fillRect(mx + x * MINIMAP_CELL, my + y * MINIMAP_CELL, MINIMAP_CELL, MINIMAP_CELL);
+          } else if (v === 2) {
+            ctx.fillStyle = '#282';
+            ctx.fillRect(mx + x * MINIMAP_CELL, my + y * MINIMAP_CELL, MINIMAP_CELL, MINIMAP_CELL);
+          }
+        }
+      }
+    }
+    ctx.fillStyle = isHoldingBreath ? '#66a' : '#d44';
+    ctx.fillRect(mx + (player.x | 0) * MINIMAP_CELL - 1, my + (player.y | 0) * MINIMAP_CELL - 1, MINIMAP_CELL + 1, MINIMAP_CELL + 1);
+  }
+
   if (enemy.state === 'hunt') {
     enemy.speed = 1.0;
     enemy.stepI = 0.35;
