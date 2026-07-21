@@ -350,7 +350,7 @@ const enemy = {
 let gameOver = false;
 let gameOverTime = 0;
 let debug = false;
-let lampOffX = -118, lampOffY = -280;
+let lampOffX = -30, lampOffY = -424;
 let footprints = [];
 let dust = [];
 let items = [];
@@ -816,13 +816,6 @@ function update(dt) {
     if (keys['d'] || keys['arrowright']) { mx -= sin; my += cos; }
   }
   if (keys['q']) { keys['q'] = false; lampOn = !lampOn; }
-  if (debug) {
-    const spd = 120 * dt;
-    if (keys['j']) { lampOffX -= spd; keys['j'] = false; }
-    if (keys['l']) { lampOffX += spd; keys['l'] = false; }
-    if (keys['i']) { lampOffY -= spd; keys['i'] = false; }
-    if (keys['k']) { lampOffY += spd; keys['k'] = false; }
-  }
   if (lampOn) {
     if (lampFlickerTimer > 0) {
       lampFlickerTimer -= dt;
@@ -1345,11 +1338,6 @@ function render(time) {
     const sx = (W >> 1) + (tw >> 1) + 6;
     ctx.fillStyle = enemy.state === 'hunt' ? '#d33' : '#36d';
     ctx.fillRect(sx, 14, 10, 10);
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#ff0';
-    ctx.font = '12px monospace';
-    ctx.fillText('LAMP: X=' + lampOffX.toFixed(0) + ' Y=' + lampOffY.toFixed(0), 180, 50);
-    ctx.fillText('(J/L = X, I/K = Y)', 180, 65);
     }
   }
 
