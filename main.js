@@ -350,6 +350,7 @@ const enemy = {
 let gameOver = false;
 let gameOverTime = 0;
 let debug = false;
+let lampOffX = -100, lampOffY = -60;
 let footprints = [];
 let dust = [];
 let items = [];
@@ -813,6 +814,12 @@ function update(dt) {
     if (keys['d'] || keys['arrowright']) { mx -= sin; my += cos; }
   }
   if (keys['q']) { keys['q'] = false; lampOn = !lampOn; }
+  if (debug) {
+    if (keys['j']) { lampOffX -= 120 * dt; keys['j'] = false; }
+    if (keys['l']) { lampOffX += 120 * dt; keys['l'] = false; }
+    if (keys['i']) { lampOffY -= 120 * dt; keys['i'] = false; }
+    if (keys['k']) { lampOffY += 120 * dt; keys['k'] = false; }
+  }
   if (lampOn) {
     if (lampFlickerTimer > 0) {
       lampFlickerTimer -= dt;
@@ -1259,8 +1266,8 @@ function render(time) {
     ctx.font = '12px monospace';
     ctx.textAlign = 'right';
     ctx.fillText(fps + ' FPS', W - 10, H - 10);
-    const lx = -100;
-    const ly = (H >> 1) - 120;
+    const lx = lampOffX;
+    const ly = (H >> 1) + lampOffY;
     const ls = 2;
     ctx.imageSmoothingEnabled = false;
     if (lampBtnImg.complete && lampBtnImg.naturalWidth > 0) {
@@ -1330,6 +1337,11 @@ function render(time) {
     const sx = (W >> 1) + (tw >> 1) + 6;
     ctx.fillStyle = enemy.state === 'hunt' ? '#d33' : '#36d';
     ctx.fillRect(sx, 14, 10, 10);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#ff0';
+    ctx.font = '12px monospace';
+    ctx.fillText('LAMP: X=' + lampOffX.toFixed(0) + ' Y=' + lampOffY.toFixed(0), 10, 50);
+    ctx.fillText('(J/L = X, I/K = Y)', 10, 65);
     }
   }
 
