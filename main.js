@@ -389,6 +389,10 @@ const batImg = new Image();
 batImg.src = 'assets/images/battery_horror1.png';
 const mapImg = new Image();
 mapImg.src = 'assets/images/minimap_1.png';
+const lampImg = new Image();
+lampImg.src = 'assets/images/lamp_wo_everything.png';
+const lampBtnImg = new Image();
+lampBtnImg.src = 'assets/images/lamp_button_off.png';
 
 const handCanvas = document.createElement('canvas');
 handCanvas.width = W;
@@ -1255,6 +1259,14 @@ function render(time) {
     ctx.font = '12px monospace';
     ctx.textAlign = 'right';
     ctx.fillText(fps + ' FPS', W - 10, H - 10);
+    const lx = 20;
+    const ly = (H >> 1) - 60;
+    if (lampBtnImg.complete && lampBtnImg.naturalWidth > 0) {
+      ctx.drawImage(lampBtnImg, lx, ly);
+    }
+    if (lampImg.complete && lampImg.naturalWidth > 0) {
+      ctx.drawImage(lampImg, lx, ly);
+    }
     ctx.textAlign = 'left';
     ctx.fillStyle = '#aaa';
     let invY = H - 30;
