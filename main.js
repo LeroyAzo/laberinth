@@ -442,10 +442,7 @@ keyImgs.push(new Image()); keyImgs[3].src = 'assets/images/three_keys.png';
 
 const doorTex = new Image();
 doorTex.src = 'assets/images/green_door_closed.png';
-const doorMidTex = new Image();
-doorMidTex.src = 'assets/images/door_mid.png';
-const doorOpenTex = new Image();
-doorOpenTex.src = 'assets/images/door_open.png';
+
 
 let texWalls = [];
 
@@ -461,27 +458,7 @@ function findExitWalls() {
   }
 }
 
-let spawnDoorX = -1, spawnDoorY = -1, spawnDoorState = 'closed', spawnDoorTimer = 0, spawnDoorTimerMax = 0;
 
-function findSpawnDoor() {
-  const cx = 1.5, cy = 1.5;
-  let best = Infinity;
-  spawnDoorX = -1; spawnDoorY = -1;
-  for (let y = 0; y < MAP_H; y++) {
-    for (let x = 0; x < MAP_W; x++) {
-      if (maze[y][x] === 1) {
-        const dist = Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
-        if (dist < best) {
-          best = dist;
-          spawnDoorX = x; spawnDoorY = y;
-        }
-      }
-    }
-  }
-  spawnDoorState = 'closed';
-  spawnDoorTimer = 0;
-  spawnDoorTimerMax = 0;
-}
 
 const handCanvas = document.createElement('canvas');
 handCanvas.width = W;
@@ -1028,33 +1005,7 @@ function update(dt) {
     player.won = true;
     player.winTime = performance.now();
   }
-  if (keys['e']) {
-    keys['e'] = false;
-    if (spawnDoorState === 'closed' && Math.hypot(player.x - (spawnDoorX + 0.5), player.y - (spawnDoorY + 0.5)) < 2) {
-      if (inventory.keys > 0) {
-        inventory.keys--;
-        spawnDoorState = 'mid';
-        spawnDoorTimer = 0.5;
-      } else {
-        notifications.unshift({ text: 'Necesitas una llave', timer: 2 });
-        if (notifications.length > 4) notifications.pop();
-      }
-    }
-  }
-  if (spawnDoorState === 'mid') {
-    spawnDoorTimer -= dt;
-    if (spawnDoorTimer <= 0) {
-      spawnDoorState = 'open';
-      spawnDoorTimer = 0.6;
-      spawnDoorTimerMax = 0.6;
-    }
-  } else if (spawnDoorState === 'open') {
-    spawnDoorTimer -= dt;
-    if (spawnDoorTimer <= 0 && !player.won) {
-      player.won = true;
-      player.winTime = performance.now();
-    }
-  }
+
 
   if (moving && !isSprinting) {
     if (walkDelay > 0) {
@@ -1233,46 +1184,6 @@ function renderItems(hz) {
 }
 
 
-function renderEIcon() {
-  if (spawnDoorState !== 'closed' || spawnDoorX < 0) return;
-  const wallCX = spawnDoorX + 0.5, wallCY = spawnDoorY + 0.5;
-  const dx = player.x - wallCX, dy = player.y - wallCY;
-  let doorX, doorY;
-  if (Math.abs(dx) > Math.abs(dy)) {
-    doorX = spawnDoorX + (dx > 0 ? 1 : 0);
-    doorY = wallCY;
-  } else {
-    doorX = wallCX;
-    doorY = spawnDoorY + (dy > 0 ? 1 : 0);
-  }
-  const sx = doorX - player.x, sy = doorY - player.y;
-  const dist = Math.hypot(sx, sy);
-  if (dist > 2 || dist < 0.1) return;
-  const angle = Math.atan2(sy, sx);
-  let rel = angle - pDir;
-  while (rel < -Math.PI) rel += Math.PI * 2;
-  while (rel > Math.PI) rel -= Math.PI * 2;
-  if (Math.abs(rel) > HALF_FOV + 0.2) return;
-  if (!hasLineOfSight(player.x, player.y, doorX, doorY)) return;
-  const screenX = (rel / HALF_FOV + 1) / 2 * W;
-  const pitchRad = player.pitch / FOCAL;
-  const screenY = HORIZON + FOCAL * Math.tan(pitchRad);
-  const s = Math.max(16, Math.min(48, 60 / dist));
-  const bx = screenX - s * 0.5;
-  const by = screenY - s * 0.5;
-  ctx.fillStyle = 'rgba(0,0,0,0.65)';
-  ctx.fillRect(bx, by, s, s);
-  ctx.strokeStyle = '#ddd';
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(bx, by, s, s);
-  ctx.fillStyle = '#fff';
-  ctx.font = `bold ${(s * 0.55) | 0}px monospace`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('E', screenX, screenY);
-  ctx.textBaseline = 'alphabetic';
-}
-
 function renderDust(hz) {
   if (!lampOn) return;
   const pH = 0.5;
@@ -1419,14 +1330,8 @@ function render(time) {
     const brightness = f * wallBr;
 
     let wallTex = null;
-    if (hit && brightness > 0.005) {
-      if (mapX === spawnDoorX && mapY === spawnDoorY) {
-        if (spawnDoorState === 'closed' && doorTex.complete && doorTex.naturalWidth > 0) wallTex = doorTex;
-        else if (spawnDoorState === 'mid' && doorMidTex.complete && doorMidTex.naturalWidth > 0) wallTex = doorMidTex;
-        else if (spawnDoorState === 'open' && doorOpenTex.complete && doorOpenTex.naturalWidth > 0) wallTex = doorOpenTex;
-      } else if (texWalls.some(w => w.x === mapX && w.y === mapY) && doorTex.complete && doorTex.naturalWidth > 0) {
-        wallTex = doorTex;
-      }
+    if (hit && brightness > 0.005 && texWalls.some(w => w.x === mapX && w.y === mapY) && doorTex.complete && doorTex.naturalWidth > 0) {
+      wallTex = doorTex;
     }
     if (wallTex) {
       const tw = wallTex.width, th = wallTex.height;
@@ -1471,7 +1376,6 @@ function render(time) {
   renderFootprints(hz);
   renderItems(hz);
   renderDust(hz);
-  renderEIcon();
 
   if (lampOn) {
     const cx = W >> 1, cy = HORIZON;
@@ -1597,12 +1501,6 @@ function render(time) {
 
   ctx.fillStyle = 'rgba(255,240,200,0.04)';
   ctx.fillRect(0, 0, W, H);
-
-  if (spawnDoorState === 'open') {
-    const flash = 1 - (spawnDoorTimer / spawnDoorTimerMax);
-    ctx.fillStyle = `rgba(255,255,255,${flash})`;
-    ctx.fillRect(0, 0, W, H);
-  }
 
   if (gameOver) {
     ctx.fillStyle = 'rgba(80,0,0,0.9)';
@@ -1786,7 +1684,6 @@ function render(time) {
 function restartGame() {
   generateMaze();
   findExitWalls();
-  findSpawnDoor();
   buildNavGrid();
   buildRouteTable();
   player.x = 1.5; player.y = 1.5; player.dir = 0; player.pitch = 0;
@@ -1898,7 +1795,6 @@ function loop(now) {
 
 generateMaze();
 findExitWalls();
-findSpawnDoor();
 buildNavGrid();
 buildRouteTable();
 spawnEnemy();
