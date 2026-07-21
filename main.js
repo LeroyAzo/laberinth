@@ -261,12 +261,15 @@ function spawnTestItems() {
   items = [];
   const types = ['key_exit', 'key_fake1', 'key_fake2', 'map_piece'];
   for (let i = 0; i < types.length; i++) {
-    const a = Math.random() * Math.PI * 2;
-    const dist = 2 + Math.random() * 3;
-    let x = player.x + Math.cos(a) * dist;
-    let y = player.y + Math.sin(a) * dist;
-    if (x >= 0 && x < MAP_W && y >= 0 && y < MAP_H && !isWall(x, y)) {
-      items.push({ x, y, type: types[i], collected: false });
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const a = Math.random() * Math.PI * 2;
+      const dist = 2 + Math.random() * 3;
+      let x = player.x + Math.cos(a) * dist;
+      let y = player.y + Math.sin(a) * dist;
+      if (x >= 0 && x < MAP_W && y >= 0 && y < MAP_H && !isWall(x, y)) {
+        items.push({ x, y, type: types[i], collected: false });
+        break;
+      }
     }
   }
   for (let i = 0; i < 10; i++) {
