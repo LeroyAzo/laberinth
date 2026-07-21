@@ -442,26 +442,42 @@ keyImgs.push(new Image()); keyImgs[3].src = 'assets/images/three_keys.png';
 
 const doorTex = new Image();
 doorTex.src = 'assets/images/green_door_closed.png';
+const doorMidTex = new Image();
+doorMidTex.src = 'assets/images/door_mid.png';
 
 let texWalls = [];
 
 function findExitWalls() {
   texWalls = [];
+  const ex = CELLS_X * 2 - 1, ey = CELLS_Y * 2 - 1;
+  const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+  for (const [dx, dy] of dirs) {
+    const wx = ex + dx, wy = ey + dy;
+    if (wx >= 0 && wx < MAP_W && wy >= 0 && wy < MAP_H && maze[wy][wx] === 1) {
+      texWalls.push({ x: wx, y: wy });
+    }
+  }
+}
+
+let spawnDoorX = -1, spawnDoorY = -1, spawnDoorState = 'closed', spawnDoorTimer = 0;
+
+function findSpawnDoor() {
   const cx = 1.5, cy = 1.5;
   let best = Infinity;
-  let bx = -1, by = -1;
+  spawnDoorX = -1; spawnDoorY = -1;
   for (let y = 0; y < MAP_H; y++) {
     for (let x = 0; x < MAP_W; x++) {
       if (maze[y][x] === 1) {
         const dist = Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
         if (dist < best) {
           best = dist;
-          bx = x; by = y;
+          spawnDoorX = x; spawnDoorY = y;
         }
       }
     }
   }
-  if (bx >= 0) texWalls.push({ x: bx, y: by });
+  spawnDoorState = 'closed';
+  spawnDoorTimer = 0;
 }
 
 const handCanvas = document.createElement('canvas');
@@ -1009,6 +1025,13 @@ function update(dt) {
     player.won = true;
     player.winTime = performance.now();
   }
+  if (spawnDoorState === 'opening') {
+    spawnDoorTimer -= dt;
+    if (spawnDoorTimer <= 0 && !player.won) {
+      player.won = true;
+      player.winTime = performance.now();
+    }
+  }
 
   if (moving && !isSprinting) {
     if (walkDelay > 0) {
@@ -1332,8 +1355,17 @@ function render(time) {
     const f = 1 - fog;
     const brightness = f * wallBr;
 
-    if (hit && doorTex.complete && doorTex.naturalWidth > 0 && brightness > 0.005 && texWalls.some(w => w.x === mapX && w.y === mapY)) {
-      const tw = doorTex.width, th = doorTex.height;
+    let wallTex = null;
+    if (hit && brightness > 0.005) {
+      if (mapX === spawnDoorX && mapY === spawnDoorY) {
+        if (spawnDoorState === 'closed' && doorTex.complete && doorTex.naturalWidth > 0) wallTex = doorTex;
+        else if (spawnDoorState === 'opening' && doorMidTex.complete && doorMidTex.naturalWidth > 0) wallTex = doorMidTex;
+      } else if (texWalls.some(w => w.x === mapX && w.y === mapY) && doorTex.complete && doorTex.naturalWidth > 0) {
+        wallTex = doorTex;
+      }
+    }
+    if (wallTex) {
+      const tw = wallTex.width, th = wallTex.height;
       const texNormW = Math.min(1, tw / th);
       const texNormH = Math.min(1, th / tw);
       const texHOff = (1 - texNormW) / 2;
@@ -1349,7 +1381,7 @@ function render(time) {
         if (visH > 0) {
           const texStartY = (texVOff + ((visStart - drawStart) / wallH) * texNormH) * th;
           const texVisH = (visH / wallH) * texNormH * th;
-          ctx.drawImage(doorTex, texCol, texStartY, 1, texVisH, (i * COL_W) | 0, visStart, COL_W | 0, visH);
+          ctx.drawImage(wallTex, texCol, texStartY, 1, texVisH, (i * COL_W) | 0, visStart, COL_W | 0, visH);
           ctx.globalAlpha = 1 - brightness;
           ctx.fillStyle = '#000';
           ctx.fillRect((i * COL_W) | 0, visStart, COL_W | 0, visH);
@@ -1683,6 +1715,7 @@ function render(time) {
 function restartGame() {
   generateMaze();
   findExitWalls();
+  findSpawnDoor();
   buildNavGrid();
   buildRouteTable();
   player.x = 1.5; player.y = 1.5; player.dir = 0; player.pitch = 0;
@@ -1764,7 +1797,14 @@ canvas.addEventListener('click', (e) => {
     return;
   }
 
-  if (!mouseLocked) {
+  if (mouseLocked) {
+    const dist = Math.hypot(player.x - (spawnDoorX + 0.5), player.y - (spawnDoorY + 0.5));
+    if (spawnDoorState === 'closed' && dist < 2) {
+      spawnDoorState = 'opening';
+      spawnDoorTimer = 3;
+      return;
+    }
+  } else {
     initAudio();
     if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
     ignoreNextMove = true;
@@ -1792,6 +1832,7 @@ function loop(now) {
 
 generateMaze();
 findExitWalls();
+findSpawnDoor();
 buildNavGrid();
 buildRouteTable();
 spawnEnemy();
