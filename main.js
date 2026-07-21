@@ -409,6 +409,10 @@ const handCanvas = document.createElement('canvas');
 handCanvas.width = W;
 handCanvas.height = H;
 const hCtx = handCanvas.getContext('2d');
+const lampCanvas = document.createElement('canvas');
+lampCanvas.width = W;
+lampCanvas.height = H;
+const lCtx = lampCanvas.getContext('2d');
 
 document.addEventListener('keydown', (e) => {
   keys[e.key.toLowerCase()] = true;
@@ -1281,20 +1285,28 @@ function render(time) {
     const lx = lampOffX;
     const ly = (H >> 1) + lampOffY;
     const ls = 2;
-    ctx.imageSmoothingEnabled = false;
-    const drawRotated = (img) => {
+    lCtx.clearRect(0, 0, W, H);
+    lCtx.imageSmoothingEnabled = false;
+    const drawRotated = (ctx2, img) => {
       if (!img || !img.complete || img.naturalWidth <= 0) return;
       const iw = img.naturalWidth * ls, ih = img.naturalHeight * ls;
-      ctx.save();
-      ctx.translate(lx + ih / 2, ly + iw / 2);
-      ctx.rotate(Math.PI / 2);
-      ctx.drawImage(img, -iw / 2, -ih / 2, iw, ih);
-      ctx.restore();
+      ctx2.save();
+      ctx2.translate(lx + ih / 2, ly + iw / 2);
+      ctx2.rotate(Math.PI / 2);
+      ctx2.drawImage(img, -iw / 2, -ih / 2, iw, ih);
+      ctx2.restore();
     };
-    drawRotated(lampImg);
-    drawRotated(batteryImgs[lampBattery]);
-    drawRotated(lampOn ? lampBtnOnImg : lampBtnImg);
-    ctx.imageSmoothingEnabled = true;
+    drawRotated(lCtx, lampImg);
+    drawRotated(lCtx, batteryImgs[lampBattery]);
+    drawRotated(lCtx, lampOn ? lampBtnOnImg : lampBtnImg);
+    if (!lampOn) {
+      lCtx.globalCompositeOperation = 'source-atop';
+      lCtx.fillStyle = 'rgba(0,0,0,0.85)';
+      lCtx.fillRect(0, 0, W, H);
+      lCtx.globalCompositeOperation = 'source-over';
+    }
+    lCtx.imageSmoothingEnabled = true;
+    ctx.drawImage(lampCanvas, 0, 0);
     ctx.textAlign = 'left';
     ctx.fillStyle = '#aaa';
     let invY = H - 30;
