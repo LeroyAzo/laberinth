@@ -1233,6 +1233,37 @@ function renderItems(hz) {
 }
 
 
+function renderEIcon(hz) {
+  if (spawnDoorState !== 'closed') return;
+  const dx = spawnDoorX + 0.5 - player.x;
+  const dy = spawnDoorY + 0.5 - player.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist > 2 || dist < 0.3) return;
+  const angle = Math.atan2(dy, dx);
+  let rel = angle - pDir;
+  while (rel < -Math.PI) rel += Math.PI * 2;
+  while (rel > Math.PI) rel -= Math.PI * 2;
+  if (Math.abs(rel) > HALF_FOV + 0.1) return;
+  if (!hasLineOfSight(player.x, player.y, spawnDoorX + 0.5, spawnDoorY + 0.5)) return;
+  const screenX = (rel / HALF_FOV + 1) / 2 * W;
+  const promptH = Math.max(16, Math.min(48, 60 / dist));
+  const promptW = promptH * 0.8;
+  const screenY = hz - (0.7 * FOCAL) / dist;
+  const bx = screenX - promptW / 2;
+  const by = screenY - promptH / 2;
+  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  ctx.fillRect(bx, by, promptW, promptH);
+  ctx.strokeStyle = '#ddd';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(bx, by, promptW, promptH);
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${(promptH * 0.65) | 0}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('E', screenX, screenY);
+  ctx.textBaseline = 'alphabetic';
+}
+
 function renderDust(hz) {
   if (!lampOn) return;
   const pH = 0.5;
@@ -1431,6 +1462,7 @@ function render(time) {
   renderFootprints(hz);
   renderItems(hz);
   renderDust(hz);
+  renderEIcon(hz);
 
   if (lampOn) {
     const cx = W >> 1, cy = HORIZON;
