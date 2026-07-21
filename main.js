@@ -26,7 +26,7 @@ const MINIMAP_CELL = 4;
 const MINIMAP_X = 4;
 const MINIMAP_Y = 4;
 const HORIZON = H >> 1;
-const FOCAL = (H / 2) / Math.tan(HALF_FOV);
+const FOCAL = (W / 2) / Math.tan(HALF_FOV);
 
 const DIR_N = 0, DIR_S = 1, DIR_E = 2, DIR_W = 3, DIR_NONE = 255;
 let routeTable;
@@ -491,7 +491,7 @@ document.addEventListener('mousemove', (e) => {
   if (ignoreNextMove) { ignoreNextMove = false; return; }
   if (mouseLocked && gameState === 'playing') {
     player.dir += Math.max(-100, Math.min(100, e.movementX)) * MOUSE_SENS;
-    player.pitch = Math.max(-120, Math.min(120, player.pitch - Math.max(-100, Math.min(100, e.movementY)) * 0.3));
+    player.pitch = Math.max(-192, Math.min(192, player.pitch - Math.max(-100, Math.min(100, e.movementY)) * 0.48));
   }
 });
 
