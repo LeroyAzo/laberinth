@@ -251,7 +251,7 @@ function spawnEnemy() {
 
 function spawnTestItems() {
   items = [];
-  const types = ['key_exit', 'key_fake1', 'key_fake2', 'battery', 'map_piece'];
+  const types = ['key_exit', 'key_fake1', 'key_fake2', 'map_piece'];
   for (let i = 0; i < types.length; i++) {
     const a = Math.random() * Math.PI * 2;
     const dist = 2 + Math.random() * 3;
@@ -259,6 +259,12 @@ function spawnTestItems() {
     let y = player.y + Math.sin(a) * dist;
     if (x >= 0 && x < MAP_W && y >= 0 && y < MAP_H && !isWall(x, y)) {
       items.push({ x, y, type: types[i], collected: false });
+    }
+  }
+  for (let i = 0; i < 10; i++) {
+    const cell = navCells[Math.random() * navCells.length | 0];
+    if (cell) {
+      items.push({ x: cell.x + 0.5, y: cell.y + 0.5, type: 'battery', collected: false });
     }
   }
 }
