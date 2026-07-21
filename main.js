@@ -1271,9 +1271,9 @@ function render(time) {
     ctx.textAlign = 'left';
     ctx.fillStyle = '#aaa';
     let invY = H - 30;
-    if (inventory.keys > 0) { ctx.fillStyle = '#fd0'; ctx.fillText('Llaves: ' + inventory.keys, 10, invY); invY -= 16; }
-    if (inventory.batteries > 0) { ctx.fillStyle = '#0d0'; ctx.fillText('Baterias: ' + inventory.batteries, 10, invY); invY -= 16; }
-    if (inventory.maps > 0) { ctx.fillStyle = '#f80'; ctx.fillText('Mapas: ' + inventory.maps, 10, invY); invY -= 16; }
+    if (inventory.keys > 0) { ctx.fillStyle = '#fd0'; ctx.fillText('Llaves: ' + inventory.keys, 200, invY); invY -= 16; }
+    if (inventory.batteries > 0) { ctx.fillStyle = '#0d0'; ctx.fillText('Baterias: ' + inventory.batteries, 200, invY); invY -= 16; }
+    if (inventory.maps > 0) { ctx.fillStyle = '#f80'; ctx.fillText('Mapas: ' + inventory.maps, 200, invY); invY -= 16; }
     ctx.textAlign = 'right';
     const nx = W - 10;
     let ny = 20;
