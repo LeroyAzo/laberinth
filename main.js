@@ -383,6 +383,12 @@ const handImg = new Image();
 handImg.src = 'assets/images/hand_horror_2.png';
 const clawImg = new Image();
 clawImg.src = 'assets/images/claw3.png';
+const keyImg = new Image();
+keyImg.src = 'assets/images/key_horror1.png';
+const batImg = new Image();
+batImg.src = 'assets/images/battery_horror1.png';
+const mapImg = new Image();
+mapImg.src = 'assets/images/minimap_1.png';
 
 const handCanvas = document.createElement('canvas');
 handCanvas.width = W;
@@ -1038,29 +1044,19 @@ function renderItems(hz) {
     ctx.globalAlpha = alpha;
     const cx = screenX, cy = topY + h / 2;
     const s = h * 0.7;
+    const drawItemSprite = (img) => {
+      if (!img || !img.complete || img.naturalWidth <= 0) return;
+      const iw = img.naturalWidth, ih = img.naturalHeight;
+      const scale = s * 2 / Math.max(iw, ih);
+      const dw = iw * scale, dh = ih * scale;
+      ctx.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh);
+    };
     if (item.type.startsWith('key')) {
-      ctx.fillStyle = '#fd0';
-      ctx.beginPath();
-      ctx.arc(cx, cy, s * 0.35, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#fd0';
-      ctx.fillRect(cx - s * 0.1, cy - s * 0.8, s * 0.2, s * 0.7);
+      drawItemSprite(keyImg);
     } else if (item.type === 'battery') {
-      ctx.fillStyle = '#afa';
-      ctx.fillRect(cx + s * 0.3, cy - s * 0.6, s * 0.2, s * 0.4);
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(cx + s * 0.3, cy + s * 0.2, s * 0.2, s * 0.4);
-      ctx.fillStyle = '#888';
-      ctx.fillRect(cx - s * 0.3, cy - s * 0.3, s * 0.6, s * 0.6);
+      drawItemSprite(batImg);
     } else if (item.type === 'map_piece') {
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(cx - s * 0.4, cy - s * 0.4, s * 0.8, s * 0.8);
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - s * 0.4);
-      ctx.lineTo(cx + s * 0.2, cy);
-      ctx.lineTo(cx, cy + s * 0.4);
-      ctx.stroke();
+      drawItemSprite(mapImg);
     }
   }
   ctx.globalAlpha = 1;
