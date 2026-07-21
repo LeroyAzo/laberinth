@@ -350,7 +350,7 @@ const enemy = {
 let gameOver = false;
 let gameOverTime = 0;
 let debug = false;
-let lampOffX = -30, lampOffY = -424;
+let lampOffX = -10, lampOffY = -400;
 let footprints = [];
 let dust = [];
 let items = [];
