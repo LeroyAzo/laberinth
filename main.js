@@ -124,6 +124,9 @@ let walkDelay = 0;
 let walkStep = 0;
 let lampOnAudio = null;
 let lampOffAudio = null;
+let oneKeyAudio = null;
+let twoKeyAudio = null;
+let threeKeyAudio = null;
 let walkTimer = 0;
 let walkLAudio = null;
 let walkRAudio = null;
@@ -181,6 +184,15 @@ function loadInhale() {
   lampOffAudio = new Audio('assets/audio/lamp_off.mp3');
   lampOffAudio.volume = 0.3;
   lampOffAudio.preload = 'auto';
+  oneKeyAudio = new Audio('assets/audio/one_key_sound.mp3');
+  oneKeyAudio.volume = 0.4;
+  oneKeyAudio.preload = 'auto';
+  twoKeyAudio = new Audio('assets/audio/two_key_sound.mp3');
+  twoKeyAudio.volume = 0.4;
+  twoKeyAudio.preload = 'auto';
+  threeKeyAudio = new Audio('assets/audio/three_key_sound.mp3');
+  threeKeyAudio.volume = 0.4;
+  threeKeyAudio.preload = 'auto';
 }
 
 function playInhale() {
@@ -989,6 +1001,7 @@ function update(dt) {
     }
   }
 
+  if (inventory.maps > 0) {
   const px = player.x | 0, py = player.y | 0;
   for (let dy = -revealRadius; dy <= revealRadius; dy++) {
     for (let dx = -revealRadius; dx <= revealRadius; dx++) {
@@ -998,6 +1011,7 @@ function update(dt) {
       }
     }
   }
+  }
 
   for (const item of items) {
     if (item.collected) continue;
@@ -1005,7 +1019,12 @@ function update(dt) {
     if (d < 0.5) {
       item.collected = true;
       let name = '';
-      if (item.type === 'key_exit' || item.type === 'key_fake1' || item.type === 'key_fake2') { inventory.keys++; name = 'Llave'; }
+      if (item.type === 'key_exit' || item.type === 'key_fake1' || item.type === 'key_fake2') {
+        inventory.keys++;
+        name = 'Llave';
+        const ka = inventory.keys === 1 ? oneKeyAudio : inventory.keys === 2 ? twoKeyAudio : threeKeyAudio;
+        if (ka) { ka.currentTime = 0; ka.play().catch(() => {}); }
+      }
       else if (item.type === 'battery') { lampBattery = Math.min(10, lampBattery + 2); name = 'Batería'; }
       else if (item.type === 'map_piece') { inventory.maps++; name = 'Mapa'; }
       notifications.unshift({ text: name + ' recogido', timer: 2 });
