@@ -952,7 +952,7 @@ function update(dt) {
       item.collected = true;
       let name = '';
       if (item.type === 'key_exit' || item.type === 'key_fake1' || item.type === 'key_fake2') { inventory.keys++; name = 'Llave'; }
-      else if (item.type === 'battery') { inventory.batteries++; lampBattery = Math.min(10, lampBattery + 5); name = 'Batería'; }
+      else if (item.type === 'battery') { lampBattery = Math.min(10, lampBattery + 2); name = 'Batería'; }
       else if (item.type === 'map_piece') { inventory.maps++; name = 'Mapa'; }
       notifications.unshift({ text: name + ' recogido', timer: 2 });
       if (notifications.length > 4) notifications.pop();
@@ -1284,7 +1284,7 @@ function render(time) {
     ctx.fillText(fps + ' FPS', W - 10, H - 10);
     const lx = lampOffX;
     const ly = (H >> 1) + lampOffY;
-    const ls = 2;
+    const ls = 1.6;
     lCtx.clearRect(0, 0, W, H);
     lCtx.imageSmoothingEnabled = false;
     const drawRotated = (ctx2, img) => {
@@ -1311,7 +1311,6 @@ function render(time) {
     ctx.fillStyle = '#aaa';
     let invY = H - 30;
     if (inventory.keys > 0) { ctx.fillStyle = '#fd0'; ctx.fillText('Llaves: ' + inventory.keys, 200, invY); invY -= 16; }
-    if (inventory.batteries > 0) { ctx.fillStyle = '#0d0'; ctx.fillText('Baterias: ' + inventory.batteries, 200, invY); invY -= 16; }
     if (inventory.maps > 0) { ctx.fillStyle = '#f80'; ctx.fillText('Mapas: ' + inventory.maps, 200, invY); invY -= 16; }
     ctx.textAlign = 'right';
     const nx = W - 10;
