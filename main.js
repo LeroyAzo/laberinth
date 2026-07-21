@@ -461,7 +461,7 @@ function findExitWalls() {
   }
 }
 
-let spawnDoorX = -1, spawnDoorY = -1, spawnDoorState = 'closed', spawnDoorTimer = 0;
+let spawnDoorX = -1, spawnDoorY = -1, spawnDoorState = 'closed', spawnDoorTimer = 0, spawnDoorTimerMax = 0;
 
 function findSpawnDoor() {
   const cx = 1.5, cy = 1.5;
@@ -480,6 +480,7 @@ function findSpawnDoor() {
   }
   spawnDoorState = 'closed';
   spawnDoorTimer = 0;
+  spawnDoorTimerMax = 0;
 }
 
 const handCanvas = document.createElement('canvas');
@@ -1031,14 +1032,15 @@ function update(dt) {
     keys['e'] = false;
     if (spawnDoorState === 'closed' && Math.hypot(player.x - (spawnDoorX + 0.5), player.y - (spawnDoorY + 0.5)) < 2) {
       spawnDoorState = 'mid';
-      spawnDoorTimer = 1;
+      spawnDoorTimer = 0.5;
     }
   }
   if (spawnDoorState === 'mid') {
     spawnDoorTimer -= dt;
     if (spawnDoorTimer <= 0) {
       spawnDoorState = 'open';
-      spawnDoorTimer = 1;
+      spawnDoorTimer = 0.6;
+      spawnDoorTimerMax = 0.6;
     }
   } else if (spawnDoorState === 'open') {
     spawnDoorTimer -= dt;
@@ -1548,6 +1550,12 @@ function render(time) {
 
   ctx.fillStyle = 'rgba(255,240,200,0.04)';
   ctx.fillRect(0, 0, W, H);
+
+  if (spawnDoorState === 'open') {
+    const flash = 1 - (spawnDoorTimer / spawnDoorTimerMax);
+    ctx.fillStyle = `rgba(255,255,255,${flash})`;
+    ctx.fillRect(0, 0, W, H);
+  }
 
   if (gameOver) {
     ctx.fillStyle = 'rgba(80,0,0,0.9)';
