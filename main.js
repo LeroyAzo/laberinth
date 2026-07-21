@@ -440,6 +440,28 @@ keyImgs.push(new Image()); keyImgs[1].src = 'assets/images/one_key.png';
 keyImgs.push(new Image()); keyImgs[2].src = 'assets/images/two_keys.png';
 keyImgs.push(new Image()); keyImgs[3].src = 'assets/images/three_keys.png';
 
+const doorTex = new Image();
+doorTex.src = 'assets/images/green_door_closed.png';
+
+let texWallX = -1, texWallY = -1;
+
+function findNearestWall() {
+  const cx = player.x, cy = player.y;
+  let best = Infinity;
+  texWallX = -1; texWallY = -1;
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      if (maze[y][x] === 1) {
+        const dist = Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
+        if (dist < best) {
+          best = dist;
+          texWallX = x; texWallY = y;
+        }
+      }
+    }
+  }
+}
+
 const handCanvas = document.createElement('canvas');
 handCanvas.width = W;
 handCanvas.height = H;
@@ -1305,9 +1327,39 @@ function render(time) {
 
     const fog = Math.min(1, Math.max(0, (perpDist - FOG_START) / (FOG_END - FOG_START)));
     const f = 1 - fog;
+    const brightness = f * wallBr;
 
-    ctx.fillStyle = `rgb(${(80 * f * wallBr) | 0},${(76 * f * wallBr) | 0},${(72 * f * wallBr) | 0})`;
-    ctx.fillRect(i * COL_W | 0, drawStart, COL_W | 0, wallH);
+    if (hit && mapX === texWallX && mapY === texWallY && doorTex.complete && doorTex.naturalWidth > 0 && brightness > 0.005) {
+      const tw = doorTex.width, th = doorTex.height;
+      const texNormW = Math.min(1, tw / th);
+      const texNormH = Math.min(1, th / tw);
+      const texHOff = (1 - texNormW) / 2;
+      const texVOff = (1 - texNormH) / 2;
+      const wallX = side === 0 ? py + perpDist * sinR : px + perpDist * cosR;
+      const wallFrac = wallX - Math.floor(wallX);
+      const relX = (wallFrac - texHOff) / texNormW;
+      if (relX >= 0 && relX < 1) {
+        const texCol = (relX * tw) | 0;
+        const visStart = Math.max(0, drawStart);
+        const visEnd = Math.min(H, drawEnd);
+        const visH = visEnd - visStart;
+        if (visH > 0) {
+          const texStartY = (texVOff + ((visStart - drawStart) / wallH) * texNormH) * th;
+          const texVisH = (visH / wallH) * texNormH * th;
+          ctx.drawImage(doorTex, texCol, texStartY, 1, texVisH, (i * COL_W) | 0, visStart, COL_W | 0, visH);
+          ctx.globalAlpha = 1 - brightness;
+          ctx.fillStyle = '#000';
+          ctx.fillRect((i * COL_W) | 0, visStart, COL_W | 0, visH);
+          ctx.globalAlpha = 1;
+        }
+      } else {
+        ctx.fillStyle = `rgb(${(80 * brightness) | 0},${(76 * brightness) | 0},${(72 * brightness) | 0})`;
+        ctx.fillRect(i * COL_W | 0, drawStart, COL_W | 0, wallH);
+      }
+    } else {
+      ctx.fillStyle = `rgb(${(80 * brightness) | 0},${(76 * brightness) | 0},${(72 * brightness) | 0})`;
+      ctx.fillRect(i * COL_W | 0, drawStart, COL_W | 0, wallH);
+    }
 
     ctx.fillStyle = `rgb(${(5 * ceilBr) | 0},${(5 * ceilBr) | 0},${(5 * ceilBr) | 0})`;
     ctx.fillRect(i * COL_W | 0, 0, COL_W | 0, Math.max(0, drawStart));
@@ -1627,6 +1679,7 @@ function render(time) {
 
 function restartGame() {
   generateMaze();
+  findNearestWall();
   buildNavGrid();
   buildRouteTable();
   player.x = 1.5; player.y = 1.5; player.dir = 0; player.pitch = 0;
@@ -1735,6 +1788,7 @@ function loop(now) {
 }
 
 generateMaze();
+findNearestWall();
 buildNavGrid();
 buildRouteTable();
 spawnEnemy();
