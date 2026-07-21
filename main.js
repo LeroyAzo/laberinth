@@ -443,21 +443,16 @@ keyImgs.push(new Image()); keyImgs[3].src = 'assets/images/three_keys.png';
 const doorTex = new Image();
 doorTex.src = 'assets/images/green_door_closed.png';
 
-let texWallX = -1, texWallY = -1;
+let texWalls = [];
 
-function findNearestWall() {
-  const cx = player.x, cy = player.y;
-  let best = Infinity;
-  texWallX = -1; texWallY = -1;
-  for (let y = 0; y < MAP_H; y++) {
-    for (let x = 0; x < MAP_W; x++) {
-      if (maze[y][x] === 1) {
-        const dist = Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
-        if (dist < best) {
-          best = dist;
-          texWallX = x; texWallY = y;
-        }
-      }
+function findExitWalls() {
+  texWalls = [];
+  const ex = CELLS_X * 2 - 1, ey = CELLS_Y * 2 - 1;
+  const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+  for (const [dx, dy] of dirs) {
+    const wx = ex + dx, wy = ey + dy;
+    if (wx >= 0 && wx < MAP_W && wy >= 0 && wy < MAP_H && maze[wy][wx] === 1) {
+      texWalls.push({ x: wx, y: wy });
     }
   }
 }
@@ -1330,7 +1325,7 @@ function render(time) {
     const f = 1 - fog;
     const brightness = f * wallBr;
 
-    if (hit && mapX === texWallX && mapY === texWallY && doorTex.complete && doorTex.naturalWidth > 0 && brightness > 0.005) {
+    if (hit && doorTex.complete && doorTex.naturalWidth > 0 && brightness > 0.005 && texWalls.some(w => w.x === mapX && w.y === mapY)) {
       const tw = doorTex.width, th = doorTex.height;
       const texNormW = Math.min(1, tw / th);
       const texNormH = Math.min(1, th / tw);
@@ -1680,7 +1675,7 @@ function render(time) {
 
 function restartGame() {
   generateMaze();
-  findNearestWall();
+  findExitWalls();
   buildNavGrid();
   buildRouteTable();
   player.x = 1.5; player.y = 1.5; player.dir = 0; player.pitch = 0;
@@ -1789,7 +1784,7 @@ function loop(now) {
 }
 
 generateMaze();
-findNearestWall();
+findExitWalls();
 buildNavGrid();
 buildRouteTable();
 spawnEnemy();
