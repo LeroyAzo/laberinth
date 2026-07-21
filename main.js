@@ -1598,6 +1598,7 @@ canvas.addEventListener('click', (e) => {
   if (gameOver) {
     const bx = (W >> 1) - 110, by = (H >> 1) + 45, bw = 220, bh = 48;
     if (mx >= bx && mx <= bx + bw && my >= by && my <= by + bh) {
+      gameState = 'menu';
       restartGame();
       return;
     }
