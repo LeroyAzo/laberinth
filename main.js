@@ -1235,20 +1235,22 @@ function renderItems(hz) {
 
 function renderEIcon(hz) {
   if (spawnDoorState !== 'closed') return;
-  const dx = spawnDoorX + 0.5 - player.x;
-  const dy = spawnDoorY + 0.5 - player.y;
+  const doorPX = Math.max(spawnDoorX, Math.min(spawnDoorX + 1, player.x));
+  const doorPY = Math.max(spawnDoorY, Math.min(spawnDoorY + 1, player.y));
+  const dx = doorPX - player.x;
+  const dy = doorPY - player.y;
   const dist = Math.hypot(dx, dy);
-  if (dist > 2 || dist < 0.3) return;
+  if (dist > 2 || dist < 0.1) return;
   const angle = Math.atan2(dy, dx);
   let rel = angle - pDir;
   while (rel < -Math.PI) rel += Math.PI * 2;
   while (rel > Math.PI) rel -= Math.PI * 2;
-  if (Math.abs(rel) > HALF_FOV + 0.1) return;
-  if (!hasLineOfSight(player.x, player.y, spawnDoorX + 0.5, spawnDoorY + 0.5)) return;
+  if (Math.abs(rel) > HALF_FOV + 0.2) return;
+  if (!hasLineOfSight(player.x, player.y, doorPX, doorPY)) return;
   const screenX = (rel / HALF_FOV + 1) / 2 * W;
-  const promptH = Math.max(16, Math.min(48, 60 / dist));
+  const promptH = Math.max(16, Math.min(48, 60 / Math.max(dist, 0.3)));
   const promptW = promptH * 0.8;
-  const screenY = hz - (0.7 * FOCAL) / dist;
+  const screenY = hz - (0.7 * FOCAL) / Math.max(dist, 0.3);
   const bx = screenX - promptW / 2;
   const by = screenY - promptH / 2;
   ctx.fillStyle = 'rgba(0,0,0,0.65)';
