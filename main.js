@@ -1340,8 +1340,8 @@ function render(time) {
     ctx.textAlign = 'left';
     ctx.fillStyle = '#ff0';
     ctx.font = '12px monospace';
-    ctx.fillText('LAMP: X=' + lampOffX.toFixed(0) + ' Y=' + lampOffY.toFixed(0), 10, 50);
-    ctx.fillText('(J/L = X, I/K = Y)', 10, 65);
+    ctx.fillText('LAMP: X=' + lampOffX.toFixed(0) + ' Y=' + lampOffY.toFixed(0), 180, 50);
+    ctx.fillText('(J/L = X, I/K = Y)', 180, 65);
     }
   }
 
