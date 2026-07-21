@@ -1259,13 +1259,14 @@ function render(time) {
     ctx.font = '12px monospace';
     ctx.textAlign = 'right';
     ctx.fillText(fps + ' FPS', W - 10, H - 10);
-    const lx = 20;
-    const ly = (H >> 1) - 60;
+    const lx = -30;
+    const ly = (H >> 1) - 120;
+    const ls = 2;
     if (lampBtnImg.complete && lampBtnImg.naturalWidth > 0) {
-      ctx.drawImage(lampBtnImg, lx, ly);
+      ctx.drawImage(lampBtnImg, lx, ly, lampBtnImg.naturalWidth * ls, lampBtnImg.naturalHeight * ls);
     }
     if (lampImg.complete && lampImg.naturalWidth > 0) {
-      ctx.drawImage(lampImg, lx, ly);
+      ctx.drawImage(lampImg, lx, ly, lampImg.naturalWidth * ls, lampImg.naturalHeight * ls);
     }
     ctx.textAlign = 'left';
     ctx.fillStyle = '#aaa';
