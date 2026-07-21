@@ -1250,7 +1250,8 @@ function renderEIcon(hz) {
   const screenX = (rel / HALF_FOV + 1) / 2 * W;
   const promptH = Math.max(16, Math.min(48, 60 / Math.max(dist, 0.3)));
   const promptW = promptH * 0.8;
-  const screenY = hz;
+  const pitchRad = player.pitch / FOCAL;
+  const screenY = HORIZON + FOCAL * Math.tan(pitchRad);
   const bx = screenX - promptW / 2;
   const by = screenY - promptH / 2;
   ctx.fillStyle = 'rgba(0,0,0,0.65)';
