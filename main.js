@@ -368,6 +368,8 @@ let lampOn = true;
 let lampMult = 1;
 let lampFlickerTimer = 0;
 let lampFlickerCooldown = 0;
+let lampBattery = 10;
+let lampBatteryTimer = 0;
 let isSprinting = false;
 let isHoldingBreath = false;
 let wasHoldingBreath = false;
@@ -396,6 +398,12 @@ const lampBtnImg = new Image();
 lampBtnImg.src = 'assets/images/lamp_button_off.png';
 const lampBtnOnImg = new Image();
 lampBtnOnImg.src = 'assets/images/lamp_button_on.png';
+const batteryImgs = [];
+for (let i = 0; i <= 10; i++) {
+  const img = new Image();
+  img.src = 'assets/images/battery_' + i + '.png';
+  batteryImgs.push(img);
+}
 
 const handCanvas = document.createElement('canvas');
 handCanvas.width = W;
@@ -835,6 +843,14 @@ function update(dt) {
     lampFlickerTimer = 0;
     lampFlickerCooldown = 0;
   }
+  if (lampOn && lampBattery > 0) {
+    lampBatteryTimer += dt;
+    if (lampBatteryTimer >= 20) {
+      lampBatteryTimer = 0;
+      lampBattery--;
+      if (lampBattery <= 0) { lampOn = false; }
+    }
+  }
   player.dir %= Math.PI * 2;
   if (player.dir < 0) player.dir += Math.PI * 2;
   const len = Math.hypot(mx, my);
@@ -932,7 +948,7 @@ function update(dt) {
       item.collected = true;
       let name = '';
       if (item.type === 'key_exit' || item.type === 'key_fake1' || item.type === 'key_fake2') { inventory.keys++; name = 'Llave'; }
-      else if (item.type === 'battery') { inventory.batteries++; name = 'Batería'; }
+      else if (item.type === 'battery') { inventory.batteries++; lampBattery = Math.min(10, lampBattery + 5); name = 'Batería'; }
       else if (item.type === 'map_piece') { inventory.maps++; name = 'Mapa'; }
       notifications.unshift({ text: name + ' recogido', timer: 2 });
       if (notifications.length > 4) notifications.pop();
@@ -1276,6 +1292,7 @@ function render(time) {
       ctx.restore();
     };
     drawRotated(lampImg);
+    drawRotated(batteryImgs[lampBattery]);
     drawRotated(lampOn ? lampBtnOnImg : lampBtnImg);
     ctx.imageSmoothingEnabled = true;
     ctx.textAlign = 'left';
@@ -1538,6 +1555,8 @@ function restartGame() {
   walkTimer = 0;
   walkDelay = 0;
   walkStep = 0;
+  lampBattery = 10;
+  lampBatteryTimer = 0;
   footprints = [];
   dust = [];
   revealed = Array.from({ length: MAP_H }, () => Array(MAP_W).fill(false));
