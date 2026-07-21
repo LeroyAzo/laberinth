@@ -394,6 +394,8 @@ const lampImg = new Image();
 lampImg.src = 'assets/images/lamp_wo_everything.png';
 const lampBtnImg = new Image();
 lampBtnImg.src = 'assets/images/lamp_button_off.png';
+const lampBtnOnImg = new Image();
+lampBtnOnImg.src = 'assets/images/lamp_button_on.png';
 
 const handCanvas = document.createElement('canvas');
 handCanvas.width = W;
@@ -1264,11 +1266,12 @@ function render(time) {
     const ly = (H >> 1) + lampOffY;
     const ls = 2;
     ctx.imageSmoothingEnabled = false;
-    if (lampBtnImg.complete && lampBtnImg.naturalWidth > 0) {
-      ctx.drawImage(lampBtnImg, lx, ly, lampBtnImg.naturalWidth * ls, lampBtnImg.naturalHeight * ls);
-    }
     if (lampImg.complete && lampImg.naturalWidth > 0) {
       ctx.drawImage(lampImg, lx, ly, lampImg.naturalWidth * ls, lampImg.naturalHeight * ls);
+    }
+    const btn = lampOn ? lampBtnOnImg : lampBtnImg;
+    if (btn.complete && btn.naturalWidth > 0) {
+      ctx.drawImage(btn, lx, ly, btn.naturalWidth * ls, btn.naturalHeight * ls);
     }
     ctx.imageSmoothingEnabled = true;
     ctx.textAlign = 'left';
