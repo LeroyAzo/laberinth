@@ -1460,31 +1460,6 @@ function render(time) {
     }
   }
   }
-  if (!debug) {
-  // Non-debug minimap (fog of war)
-  const mmw = MAP_W * MINIMAP_CELL;
-  const mmh = MAP_H * MINIMAP_CELL;
-  ctx.fillStyle = 'rgba(0,0,0,0.45)';
-  ctx.fillRect(MINIMAP_X - 2, MINIMAP_Y - 2, mmw + 4, mmh + 4);
-  for (let y = 0; y < MAP_H; y++) {
-    for (let x = 0; x < MAP_W; x++) {
-      if (!revealed[y][x]) {
-        ctx.fillStyle = '#1a1a1a';
-        ctx.fillRect(MINIMAP_X + x * MINIMAP_CELL, MINIMAP_Y + y * MINIMAP_CELL, MINIMAP_CELL, MINIMAP_CELL);
-      } else {
-        const v = maze[y][x];
-        if (v === 1) {
-          ctx.fillStyle = '#333';
-          ctx.fillRect(MINIMAP_X + x * MINIMAP_CELL, MINIMAP_Y + y * MINIMAP_CELL, MINIMAP_CELL, MINIMAP_CELL);
-        } else if (v === 2) {
-          ctx.fillStyle = '#282';
-          ctx.fillRect(MINIMAP_X + x * MINIMAP_CELL, MINIMAP_Y + y * MINIMAP_CELL, MINIMAP_CELL, MINIMAP_CELL);
-        }
-      }
-    }
-  }
-  ctx.fillStyle = isHoldingBreath ? '#66a' : '#d44';
-  ctx.fillRect(MINIMAP_X + (player.x | 0) * MINIMAP_CELL - 2, MINIMAP_Y + (player.y | 0) * MINIMAP_CELL - 2, MINIMAP_CELL + 2, MINIMAP_CELL + 2);
   }
 
   if (staminaAlpha > 0.01) {
