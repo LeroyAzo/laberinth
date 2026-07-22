@@ -387,6 +387,7 @@ let gameState = 'menu';
 let gamePhase = 'survivor';
 let hunterMode = false;
 let hunterRoarTimer = 15 + Math.random() * 45;
+let monsterStepT = 0;
 
 const survivor = {
   x: 1.5, y: 1.5, dir: 0,
@@ -430,6 +431,7 @@ function startHunterPhase() {
   survivor.staminaCD = false; survivor.huntT = 0;
   survivor.pidIntegral = 0; survivor.pidPrevError = 0;
   hunterRoarTimer = 15 + Math.random() * 45;
+  monsterStepT = 0;
   // Give survivor initial keys matching what player had
   survivor.keys = inventory.keys;
   inventory.keys = 0;
@@ -1191,8 +1193,13 @@ function update(dt) {
   if (canMove(nx, ny)) { player.x = nx; player.y = ny; }
   else if (canMove(nx, player.y)) { player.x = nx; }
   else if (canMove(player.x, ny)) { player.y = ny; }
-  if (gamePhase === 'hunter' && moving && moveD > 0.01) {
-    footprints.push({ x: player.x, y: player.y, dir: player.dir, life: 10 });
+  if (gamePhase === 'hunter') {
+    monsterStepT += dt;
+    const stepI = isSprinting ? 0.35 : 0.5;
+    if (moving && monsterStepT >= stepI) {
+      monsterStepT = 0;
+      footprints.push({ x: player.x, y: player.y, dir: player.dir, life: 10 });
+    }
   }
   if (keys['e']) {
     keys['e'] = false;
@@ -2097,6 +2104,7 @@ function restartGame() {
   generateMaze();
   gamePhase = 'survivor';
   hunterRoarTimer = 15 + Math.random() * 45;
+  monsterStepT = 0;
   findExitDoors();
   spawnKey();
   buildNavGrid();
