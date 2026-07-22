@@ -1199,6 +1199,7 @@ function update(dt) {
     if (moving && monsterStepT >= stepI) {
       monsterStepT = 0;
       footprints.push({ x: player.x, y: player.y, dir: player.dir, life: 10 });
+      playFootstep(1, isSprinting ? 2.0 : 1.2);
     }
   }
   if (keys['e']) {
