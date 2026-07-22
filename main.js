@@ -1600,12 +1600,6 @@ function renderHunter(hz) {
   const pitchRad = player.pitch / FOCAL;
   const screenY = HORIZON + FOCAL * Math.tan(pitchRad);
   const sSize = Math.max(8, Math.min(40, 30 / Math.max(dist, 0.3)));
-  ctx.globalAlpha = visAlpha;
-  ctx.fillStyle = illum ? '#f84' : '#844';
-  ctx.fillRect(screenX - sSize / 2, screenY - sSize, sSize, sSize * 2);
-  ctx.strokeStyle = illum ? '#fa6' : '#a66';
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(screenX - sSize / 2, screenY - sSize, sSize, sSize * 2);
   ctx.globalAlpha = 1;
 }
 
