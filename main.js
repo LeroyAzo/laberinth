@@ -269,29 +269,6 @@ function spawnEnemy() {
   enemy.y = close.y + 0.5;
 }
 
-function spawnTestItems() {
-  items = [];
-  const types = ['key_exit', 'key_fake1', 'key_fake2', 'map_piece'];
-  for (let i = 0; i < types.length; i++) {
-    for (let attempt = 0; attempt < 20; attempt++) {
-      const a = Math.random() * Math.PI * 2;
-      const dist = 2 + Math.random() * 3;
-      let x = player.x + Math.cos(a) * dist;
-      let y = player.y + Math.sin(a) * dist;
-      if (x >= 0 && x < MAP_W && y >= 0 && y < MAP_H && !isWall(x, y)) {
-        items.push({ x, y, type: types[i], collected: false });
-        break;
-      }
-    }
-  }
-  for (let i = 0; i < 10; i++) {
-    const cell = navCells[Math.random() * navCells.length | 0];
-    if (cell) {
-      items.push({ x: cell.x + 0.5, y: cell.y + 0.5, type: 'battery', collected: false });
-    }
-  }
-}
-
 function hasLineOfSight(x1, y1, x2, y2) {
   const dx = x2 - x1, dy = y2 - y1;
   const dist = Math.hypot(dx, dy);
@@ -450,10 +427,9 @@ doorMidTex.src = 'assets/images/door_mid.png';
 const doorOpenTex = new Image();
 doorOpenTex.src = 'assets/images/door_open.png';
 
-let exitDoorState = 'closed', exitDoorTimer = 0, exitDoorTimerMax = 0;
-let exitDoorX = -1, exitDoorY = -1;
+let exitDoors = [];
 
-function findExitDoor() {
+function findExitDoors() {
   const candidates = [];
   for (let y = 2; y < MAP_H - 2; y++) {
     for (let x = 2; x < MAP_W - 2; x++) {
@@ -466,13 +442,32 @@ function findExitDoor() {
       }
     }
   }
-  if (candidates.length) {
-    const pick = candidates[Math.random() * candidates.length | 0];
-    exitDoorX = pick.x; exitDoorY = pick.y;
-  } else {
-    exitDoorX = 3; exitDoorY = 3;
+  exitDoors = [];
+  const shuffled = candidates.slice().sort(() => Math.random() - 0.5);
+  for (let i = 0; i < 3 && i < shuffled.length; i++) {
+    exitDoors.push({
+      x: shuffled[i].x, y: shuffled[i].y,
+      state: 'closed', timer: 0, timerMax: 0,
+      isReal: i === 0
+    });
   }
-  exitDoorState = 'closed'; exitDoorTimer = 0; exitDoorTimerMax = 0;
+}
+
+function spawnKey() {
+  items = [];
+  const cells = [];
+  for (let y = 1; y < MAP_H; y += 2) {
+    for (let x = 1; x < MAP_W; x += 2) {
+      if (maze[y][x] === 0) {
+        const dist = Math.hypot(x + 0.5 - 1.5, y + 0.5 - 1.5);
+        if (dist > 3) cells.push({ x, y });
+      }
+    }
+  }
+  if (cells.length) {
+    const c = cells[Math.random() * cells.length | 0];
+    items.push({ x: c.x + 0.5, y: c.y + 0.5, type: 'key_exit', collected: false });
+  }
 }
 
 
@@ -531,18 +526,29 @@ function isWall(x, y) {
   return maze[my][mx] === 1;
 }
 
-function findExitDoorFace() {
-  const wallCX = exitDoorX + 0.5, wallCY = exitDoorY + 0.5;
+function findDoorFace(door) {
+  const wallCX = door.x + 0.5, wallCY = door.y + 0.5;
   const dx = player.x - wallCX, dy = player.y - wallCY;
   let fx, fy;
   if (Math.abs(dx) > Math.abs(dy)) {
-    fx = exitDoorX + (dx > 0 ? 1 : 0);
+    fx = door.x + (dx > 0 ? 1 : 0);
     fy = wallCY;
   } else {
     fx = wallCX;
-    fy = exitDoorY + (dy > 0 ? 1 : 0);
+    fy = door.y + (dy > 0 ? 1 : 0);
   }
   return { x: fx, y: fy };
+}
+
+function nearestDoor() {
+  let best = null, bestDist = Infinity;
+  for (const d of exitDoors) {
+    if (d.state !== 'closed') continue;
+    const face = findDoorFace(d);
+    const dist = Math.hypot(player.x - face.x, player.y - face.y);
+    if (dist < bestDist) { bestDist = dist; best = d; }
+  }
+  return bestDist < 2 ? { door: best, dist: bestDist, face: findDoorFace(best) } : null;
 }
 
 let moveT = 0;
@@ -960,7 +966,7 @@ function update(dt) {
   }
   if (lampOn && lampBattery > 0) {
     lampBatteryTimer += dt;
-    if (lampBatteryTimer >= 20) {
+    if (lampBatteryTimer >= 40) {
       lampBatteryTimer = 0;
       lampBattery--;
       if (lampBattery <= 0) { lampOn = false; }
@@ -1028,30 +1034,39 @@ function update(dt) {
   else if (canMove(player.x, ny)) { player.y = ny; }
   if (keys['e']) {
     keys['e'] = false;
-    const face = findExitDoorFace();
-    if (exitDoorState === 'closed' && Math.hypot(player.x - face.x, player.y - face.y) < 2) {
-      if (inventory.keys > 0) {
-        inventory.keys--;
-        exitDoorState = 'mid';
-        exitDoorTimer = 0.5;
-      } else {
-        notifications.unshift({ text: 'Necesitas una llave', timer: 2 });
-        if (notifications.length > 4) notifications.pop();
-      }
+    const near = nearestDoor();
+    if (near && near.door.state === 'closed' && inventory.keys > 0) {
+      inventory.keys--;
+      near.door.state = 'mid';
+      near.door.timer = 0.5;
+    } else if (near && near.door.state === 'closed') {
+      notifications.unshift({ text: 'Necesitas una llave', timer: 2 });
+      if (notifications.length > 4) notifications.pop();
     }
   }
-  if (exitDoorState === 'mid') {
-    exitDoorTimer -= dt;
-    if (exitDoorTimer <= 0) {
-      exitDoorState = 'open';
-      exitDoorTimer = 0.6;
-      exitDoorTimerMax = 0.6;
-    }
-  } else if (exitDoorState === 'open') {
-    exitDoorTimer -= dt;
-    if (exitDoorTimer <= 0 && !player.won) {
-      player.won = true;
-      player.winTime = performance.now();
+  for (const d of exitDoors) {
+    if (d.state === 'mid') {
+      d.timer -= dt;
+      if (d.timer <= 0) {
+        d.state = 'open';
+        d.timer = 0.6;
+        d.timerMax = 0.6;
+      }
+    } else if (d.state === 'open') {
+      d.timer -= dt;
+      if (d.timer <= 0) {
+        if (d.isReal) {
+          player.won = true;
+          player.winTime = performance.now();
+        } else {
+          const r = Math.random();
+          if (r < 0.33) { inventory.maps++; notifications.unshift({ text: 'Mapa encontrado', timer: 2 }); }
+          else if (r < 0.66) { lampBattery = Math.min(10, lampBattery + 2); notifications.unshift({ text: 'Batería encontrada', timer: 2 }); }
+          else { inventory.keys++; notifications.unshift({ text: 'Llave encontrada', timer: 2 }); }
+          if (notifications.length > 4) notifications.pop();
+          d.state = 'closed'; d.timer = 0; d.timerMax = 0;
+        }
+      }
     }
   }
 
@@ -1234,10 +1249,10 @@ function renderItems(hz) {
 
 
 function renderExitEIcon() {
-  if (exitDoorState !== 'closed' || exitDoorX < 0) return;
-  const face = findExitDoorFace();
-  const dist = Math.hypot(player.x - face.x, player.y - face.y);
-  if (dist > 2 || dist < 0.1) return;
+  const near = nearestDoor();
+  if (!near) return;
+  const face = near.face;
+  const dist = near.dist;
   const angle = Math.atan2(face.y - player.y, face.x - player.x);
   let rel = angle - pDir;
   while (rel < -Math.PI) rel += Math.PI * 2;
@@ -1408,10 +1423,15 @@ function render(time) {
     const brightness = f * wallBr;
 
     let wallTex = null;
-    if (hit && brightness > 0.005 && exitDoorX >= 0 && mapX === exitDoorX && mapY === exitDoorY) {
-      if (exitDoorState === 'closed' && doorTex.complete && doorTex.naturalWidth > 0) wallTex = doorTex;
-      else if (exitDoorState === 'mid' && doorMidTex.complete && doorMidTex.naturalWidth > 0) wallTex = doorMidTex;
-      else if (exitDoorState === 'open' && doorOpenTex.complete && doorOpenTex.naturalWidth > 0) wallTex = doorOpenTex;
+    if (hit && brightness > 0.005) {
+      for (const d of exitDoors) {
+        if (mapX === d.x && mapY === d.y) {
+          if (d.state === 'closed' && doorTex.complete && doorTex.naturalWidth > 0) wallTex = doorTex;
+          else if (d.state === 'mid' && doorMidTex.complete && doorMidTex.naturalWidth > 0) wallTex = doorMidTex;
+          else if (d.state === 'open' && doorOpenTex.complete && doorOpenTex.naturalWidth > 0) wallTex = doorOpenTex;
+          break;
+        }
+      }
     }
     if (wallTex) {
       const tw = wallTex.width, th = wallTex.height;
@@ -1583,10 +1603,13 @@ function render(time) {
   ctx.fillStyle = 'rgba(255,240,200,0.04)';
   ctx.fillRect(0, 0, W, H);
 
-  if (exitDoorState === 'open') {
-    const flash = 1 - (exitDoorTimer / exitDoorTimerMax);
-    ctx.fillStyle = `rgba(255,255,255,${flash})`;
-    ctx.fillRect(0, 0, W, H);
+  for (const d of exitDoors) {
+    if (d.state === 'open') {
+      const flash = 1 - (d.timer / d.timerMax);
+      ctx.fillStyle = `rgba(255,255,255,${flash})`;
+      ctx.fillRect(0, 0, W, H);
+      break;
+    }
   }
 
   if (gameOver) {
@@ -1770,7 +1793,8 @@ function render(time) {
 
 function restartGame() {
   generateMaze();
-  findExitDoor();
+  findExitDoors();
+  spawnKey();
   buildNavGrid();
   buildRouteTable();
   player.x = 1.5; player.y = 1.5; player.dir = 0; player.pitch = 0;
@@ -1802,7 +1826,6 @@ function restartGame() {
   enemy.routeDir = 0;
   inventory = { keys: 0, batteries: 0, maps: 0 };
   spawnEnemy();
-  spawnTestItems();
 }
 
 canvas.addEventListener('click', (e) => {
@@ -1885,9 +1908,9 @@ function loop(now) {
 }
 
 generateMaze();
-findExitDoor();
+findExitDoors();
+spawnKey();
 buildNavGrid();
 buildRouteTable();
 spawnEnemy();
-spawnTestItems();
 requestAnimationFrame((now) => { last = now; loop(now); });
