@@ -398,7 +398,7 @@ const survivor = {
   keys: 0, maps: 0,
   stamina: { cur: 100, max: 100 },
   lampOn: true, lampBattery: 10,
-  state: 'explore',
+  state: 'explore', holdBreathTimer: 0,
   targetCell: null, targetSubCell: null, patrolWait: 0, cellTimer: 0,
   moveT: 0, stepT: 0, walkStep: 0,
   isSprinting: false, isHoldingBreath: false,
@@ -430,6 +430,7 @@ function startHunterPhase() {
   survivor.lampOn = true; survivor.lampBattery = 10;
   survivor.state = 'explore';
   survivor.targetCell = null; survivor.targetSubCell = null; survivor.patrolWait = 0; survivor.cellTimer = 0;
+  survivor.holdBreathTimer = 0;
   survivor.moveT = 0; survivor.stepT = 0; survivor.walkStep = 0;
   survivor.isSprinting = false; survivor.isHoldingBreath = false;
   survivor.staminaCD = false; survivor.huntT = 0;
@@ -638,16 +639,26 @@ function updateSurvivor(dt) {
   if (s.lampOn && (alarmed || tooClose)) s.lampOn = false;
   if (!s.lampOn && monDist > 15 && s.lampBattery > 0) s.lampOn = true;
 
-  // Survivor holds breath and flees when monster is close
-  s.isHoldingBreath = tooClose;
-  s.isSprinting = s.isHoldingBreath || (monDist < 10 && monLos && s.stamina.cur > 0 && !s.staminaCD && !s.isHoldingBreath);
-
-  // Radar blackout when survivor holds breath
-  if (s.isHoldingBreath) radarBlackout = 5;
+  // Survivor holds breath for 2s then flees
+  if (tooClose && s.holdBreathTimer <= 0) s.holdBreathTimer = 2;
+  if (s.holdBreathTimer > 0) {
+    s.holdBreathTimer -= dt;
+    s.isHoldingBreath = true;
+    s.isSprinting = false;
+    if (s.holdBreathTimer <= 0) {
+      s.holdBreathTimer = 0;
+      s.isHoldingBreath = false;
+      s.isSprinting = true;
+    }
+    if (s.isHoldingBreath) radarBlackout = 5;
+  } else {
+    s.isHoldingBreath = false;
+    s.isSprinting = monDist < 10 && monLos && s.stamina.cur > 0 && !s.staminaCD;
+  }
   if (radarBlackout > 0) radarBlackout -= dt;
 
-  // State machine - always flee when monster is close
-  if (tooClose || (monDist < 10 && monLos)) {
+  // State machine - flee when monster is close (or after hold breath ends)
+  if (s.isSprinting || tooClose || (monDist < 10 && monLos)) {
     s.state = 'flee';
     const fleeAng = Math.atan2(s.y - player.y, s.x - player.x);
     let bestFleeCell = null, bestFleeScore = -Infinity;
