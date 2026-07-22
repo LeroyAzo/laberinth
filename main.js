@@ -384,6 +384,54 @@ let staminaCD = false;
 let handAnim = 0;
 let shakeX = 0, shakeY = 0;
 let gameState = 'menu';
+let gamePhase = 'survivor';
+let hunterMode = false;
+
+const survivor = {
+  x: 1.5, y: 1.5, dir: 0,
+  keys: 0, maps: 0,
+  stamina: { cur: 100, max: 100 },
+  lampOn: true, lampBattery: 10,
+  state: 'explore',
+  targetCell: null, patrolWait: 0, cellTimer: 0,
+  moveT: 0, stepT: 0, walkStep: 0,
+  isSprinting: false, isHoldingBreath: false,
+  staminaCD: false, huntT: 0,
+  stepDelay: 0,
+  pidIntegral: 0, pidPrevError: 0,
+};
+
+function startHunterPhase() {
+  gamePhase = 'hunter';
+  // Position player (monster) where the enemy was
+  player.x = enemy.x; player.y = enemy.y;
+  player.dir = enemy.dir; player.pitch = 0;
+  // Spawn survivor at farthest point from exit (39.5, 29.5)
+  const exCX = CELLS_X * 2 - 1 + 0.5, exCY = CELLS_Y * 2 - 1 + 0.5;
+  let bestDist = -1, bestX = 1.5, bestY = 1.5;
+  for (let y = 2; y < MAP_H - 2; y++) {
+    for (let x = 2; x < MAP_W - 2; x++) {
+      if (maze[y][x] === 0) {
+        const d = Math.hypot(x + 0.5 - exCX, y + 0.5 - exCY);
+        if (d > bestDist) { bestDist = d; bestX = x + 0.5; bestY = y + 0.5; }
+      }
+    }
+  }
+  survivor.x = bestX; survivor.y = bestY;
+  survivor.dir = Math.random() * Math.PI * 2;
+  survivor.keys = 0; survivor.maps = 0;
+  survivor.stamina.cur = 100;
+  survivor.lampOn = true; survivor.lampBattery = 10;
+  survivor.state = 'explore';
+  survivor.targetCell = null; survivor.patrolWait = 0; survivor.cellTimer = 0;
+  survivor.moveT = 0; survivor.stepT = 0; survivor.walkStep = 0;
+  survivor.isSprinting = false; survivor.isHoldingBreath = false;
+  survivor.staminaCD = false; survivor.huntT = 0;
+  survivor.pidIntegral = 0; survivor.pidPrevError = 0;
+  // Give survivor initial keys matching what player had
+  survivor.keys = inventory.keys;
+  inventory.keys = 0;
+}
 
 function enterFullscreen() { try { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); } catch(e) {} }
 function exitFullscreen() { try { if (document.fullscreenElement) document.exitFullscreen(); } catch(e) {} }
@@ -553,8 +601,107 @@ function nearestDoor() {
 
 let moveT = 0;
 
+function updateSurvivor(dt) {
+  if (gamePhase !== 'hunter' || gameOver || player.won) return;
+  const s = survivor;
+  let bestKeyDist = Infinity;
+  // Recharge stamina
+  if (s.stamina.cur < s.stamina.max) s.stamina.cur = Math.min(s.stamina.max, s.stamina.cur + dt * 8);
+  if (s.staminaCD && s.stamina.cur > 50) s.staminaCD = false;
+  // Battery drain
+  if (s.lampOn && s.lampBattery > 0) {
+    s.stepT += dt;
+    if (s.stepT >= 40) { s.stepT = 0; s.lampBattery--; if (s.lampBattery <= 0) s.lampOn = false; }
+  }
+  // Flashlight flicker
+  if (s.lampOn) {
+    s.huntT -= dt;
+    if (s.huntT < 0) { s.huntT = Math.random() * 4 + 1; }
+  }
+  // AI state: collect keys → open doors → try exit
+  if (s.state === 'explore' || s.state === 'seekKey') {
+    let foundKey = null;
+    for (const item of items) {
+      if (item.collected || item.type !== 'key_exit') continue;
+      const d = Math.hypot(item.x - s.x, item.y - s.y);
+      if (d < bestKeyDist) { bestKeyDist = d; foundKey = item; }
+    }
+    // Move toward key if close enough (< 12 cells) or no keys and far from any door
+    const nearDoor = exitDoors.some(d => d.state === 'closed' && Math.hypot(d.x + 0.5 - s.x, d.y + 0.5 - s.y) < 8);
+    if (foundKey && (bestKeyDist < 8 || (!nearDoor && s.keys === 0))) {
+      s.targetCell = { x: foundKey.x | 0, y: foundKey.y | 0 };
+    } else if (s.keys > 0 && nearDoor) {
+      s.state = 'goToDoor';
+    } else {
+      if (!s.targetCell || s.cellTimer > 3) {
+        const cells = [];
+        for (let y = 2; y < MAP_H - 2; y++) {
+          for (let x = 2; x < MAP_W - 2; x++) {
+            if (maze[y][x] === 0 && navIndex[y][x] >= 0) cells.push({ x, y });
+          }
+        }
+        if (cells.length) s.targetCell = cells[Math.random() * cells.length | 0];
+        s.cellTimer = 0;
+      }
+    }
+  }
+  if (s.state === 'goToDoor') {
+    let bestDoor = null, bestDoorDist = Infinity;
+    for (const d of exitDoors) {
+      if (d.state !== 'closed') continue;
+      const ddx = d.x + 0.5 - s.x, ddy = d.y + 0.5 - s.y;
+      const dd = Math.hypot(ddx, ddy);
+      if (dd < bestDoorDist) { bestDoorDist = dd; bestDoor = d; }
+    }
+    if (!bestDoor || s.keys === 0) { s.state = 'explore'; s.targetCell = null; }
+    else {
+      if (bestDoorDist < 2) {
+        s.keys--;
+        bestDoor.state = 'mid';
+        bestDoor.timer = 0.5;
+        s.state = 'explore'; s.targetCell = null;
+      } else {
+        s.targetCell = { x: bestDoor.x, y: bestDoor.y };
+      }
+    }
+  }
+  // Movement
+  s.cellTimer += dt;
+  if (s.cellTimer > 5) { s.cellTimer = 0; s.targetCell = null; }
+  if (!s.targetCell) { s.state = 'explore'; return; }
+  const tcx = s.targetCell.x + 0.5, tcy = s.targetCell.y + 0.5;
+  const spd = (s.isSprinting ? 2.0 : 1.0) * dt;
+  const ang = Math.atan2(tcy - s.y, tcx - s.x);
+  const nx = s.x + Math.cos(ang) * spd;
+  const ny = s.y + Math.sin(ang) * spd;
+  if (!isWall(nx, ny)) { s.x = nx; s.y = ny; }
+  else if (!isWall(nx, s.y)) s.x = nx;
+  else if (!isWall(s.x, ny)) s.y = ny;
+  s.dir = ang;
+  // Footstep sounds
+  {
+    s.moveT += dt;
+    s.stepDelay -= dt;
+    if (s.stepDelay <= 0) {
+      const stepSound = s.walkStep % 2 === 0 ? 'walkL' : 'walkR';
+      // Survivor footstep - will play positioned audio
+      if (s.isSprinting) s.stepDelay = 0.3;
+      else s.stepDelay = 0.5;
+      s.walkStep++;
+    }
+  }
+  // Collect key if overlapping
+  for (const item of items) {
+    if (item.collected || item.type !== 'key_exit') continue;
+    if (Math.hypot(item.x - s.x, item.y - s.y) < 0.5) {
+      item.collected = true;
+      s.keys++;
+    }
+  }
+}
+
 function updateEnemy(dt) {
-  if (gameOver || player.won) return;
+  if (gameOver || player.won || gamePhase === 'hunter') return;
   const prevX = enemy.x, prevY = enemy.y;
   const dx = player.x - enemy.x;
   const dy = player.y - enemy.y;
@@ -920,7 +1067,7 @@ function update(dt) {
   if (gameOver || player.won) return;
   const sin = Math.sin(player.dir);
   const cos = Math.cos(player.dir);
-  isHoldingBreath = keys['c'] && !staminaCD && stamina.cur > 0 && !exhalePlaying;
+  isHoldingBreath = gamePhase !== 'hunter' && keys['c'] && !staminaCD && stamina.cur > 0 && !exhalePlaying;
   if (isHoldingBreath && !wasHoldingBreath) {
     if (stopRunAudio && !stopRunAudio.paused) { stopRunAudio.pause(); stopRunAudio.currentTime = 0; }
     if (sprintAudio && !sprintAudio.paused) { sprintAudio.pause(); sprintAudio.currentTime = 0; }
@@ -939,37 +1086,39 @@ function update(dt) {
     if (keys['a'] || keys['arrowleft'])  { mx += sin; my -= cos; }
     if (keys['d'] || keys['arrowright']) { mx -= sin; my += cos; }
   }
-  if (keys['q']) { keys['q'] = false; lampOn = !lampOn; }
+  if (gamePhase !== 'hunter' && keys['q']) { keys['q'] = false; lampOn = !lampOn; }
   if (lampOn !== prevLampOn) {
     if (lampOn && lampOnAudio) { lampOnAudio.currentTime = 0; lampOnAudio.play().catch(() => {}); }
     if (!lampOn && lampOffAudio) { lampOffAudio.currentTime = 0; lampOffAudio.play().catch(() => {}); }
     prevLampOn = lampOn;
   }
-  if (lampOn) {
-    if (lampFlickerTimer > 0) {
-      lampFlickerTimer -= dt;
-      lampMult = 0.15 + Math.random() * 0.2;
-    } else {
-      lampMult += (1 - lampMult) * 5 * dt;
-      if (lampMult > 0.99) lampMult = 1;
-      if (lampFlickerCooldown > 0) {
-        lampFlickerCooldown -= dt;
+  if (gamePhase !== 'hunter') {
+    if (lampOn) {
+      if (lampFlickerTimer > 0) {
+        lampFlickerTimer -= dt;
+        lampMult = 0.15 + Math.random() * 0.2;
       } else {
-        lampFlickerTimer = 0.04 + Math.random() * 0.1;
-        lampFlickerCooldown = 1 + Math.random() * 3;
+        lampMult += (1 - lampMult) * 5 * dt;
+        if (lampMult > 0.99) lampMult = 1;
+        if (lampFlickerCooldown > 0) {
+          lampFlickerCooldown -= dt;
+        } else {
+          lampFlickerTimer = 0.04 + Math.random() * 0.1;
+          lampFlickerCooldown = 1 + Math.random() * 3;
+        }
       }
+    } else {
+      lampMult = 1;
+      lampFlickerTimer = 0;
+      lampFlickerCooldown = 0;
     }
-  } else {
-    lampMult = 1;
-    lampFlickerTimer = 0;
-    lampFlickerCooldown = 0;
-  }
-  if (lampOn && lampBattery > 0) {
-    lampBatteryTimer += dt;
-    if (lampBatteryTimer >= 40) {
-      lampBatteryTimer = 0;
-      lampBattery--;
-      if (lampBattery <= 0) { lampOn = false; }
+    if (lampOn && lampBattery > 0) {
+      lampBatteryTimer += dt;
+      if (lampBatteryTimer >= 40) {
+        lampBatteryTimer = 0;
+        lampBattery--;
+        if (lampBattery <= 0) { lampOn = false; }
+      }
     }
   }
   player.dir %= Math.PI * 2;
@@ -978,16 +1127,22 @@ function update(dt) {
   if (len > 1) { mx /= len; my /= len; }
   const moving = mx !== 0 || my !== 0;
 
-  isSprinting = moving && keys['shift'] && stamina.cur > 0 && !staminaCD;
-  const sprintMul = isSprinting ? 2.4 : 1;
+  if (gamePhase === 'hunter') {
+    isSprinting = moving && keys['shift'];
+  } else {
+    isSprinting = moving && keys['shift'] && stamina.cur > 0 && !staminaCD;
+  }
+  const sprintMul = isSprinting ? (gamePhase === 'hunter' ? 2.0 : 2.4) : (gamePhase === 'hunter' ? 1.2 : 1);
   if (isSprinting) {
-    stamina.cur = Math.max(0, stamina.cur - 35 * dt);
-    if (stamina.cur <= 0) {
-      staminaCD = true;
-      walkDelay = 0.5;
-      if (stopRunAudio) { stopRunAudio.currentTime = 0; stopRunAudio.play().catch(() => {}); }
+    if (gamePhase !== 'hunter') {
+      stamina.cur = Math.max(0, stamina.cur - 35 * dt);
+      if (stamina.cur <= 0) {
+        staminaCD = true;
+        walkDelay = 0.5;
+        if (stopRunAudio) { stopRunAudio.currentTime = 0; stopRunAudio.play().catch(() => {}); }
+      }
     }
-  } else if (!isHoldingBreath) {
+  } else if (!isHoldingBreath && gamePhase !== 'hunter') {
     stamina.cur = Math.min(stamina.max, stamina.cur + 25 * dt);
   }
 
@@ -1139,6 +1294,21 @@ function update(dt) {
     if (notifications[i].timer <= 0) notifications.splice(i, 1);
   }
 
+  if (gamePhase === 'hunter') {
+    try{updateSurvivor(dt)}catch(e){console.error('updateSurvivor:',e)}
+    // Check if monster catches survivor
+    if (Math.hypot(player.x - survivor.x, player.y - survivor.y) < 0.4) {
+      gameOver = true; gameOverTime = performance.now();
+    }
+  } else {
+    // Check transition: all doors open, no keys, no key items on map
+    const allOpen = exitDoors.every(d => d.state === 'open');
+    const noKeysInv = inventory.keys === 0;
+    const noKeyItems = !items.some(i => i.type === 'key_exit' && !i.collected);
+    if (allOpen && noKeysInv && noKeyItems) {
+      startHunterPhase();
+    }
+  }
   try{updateEnemy(dt)}catch(e){console.error('updateEnemy:',e)}
   }catch(e){console.error('update:',e)}
 }
@@ -1294,6 +1464,38 @@ function renderExitEIcon() {
   ctx.textBaseline = 'alphabetic';
 }
 
+function renderHunter(hz) {
+  const s = survivor;
+  const dx = s.x - player.x, dy = s.y - player.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 0.3 || dist > 12) return;
+  const angle = Math.atan2(dy, dx);
+  let rel = angle - pDir;
+  while (rel < -Math.PI) rel += Math.PI * 2;
+  while (rel > Math.PI) rel -= Math.PI * 2;
+  if (Math.abs(rel) > HALF_FOV + 0.2) return;
+  // Check if survivor's flashlight is pointing at monster (with LOS)
+  const survAngle = Math.atan2(player.y - s.y, player.x - s.x);
+  let survRel = survAngle - s.dir;
+  while (survRel < -Math.PI) survRel += Math.PI * 2;
+  while (survRel > Math.PI) survRel -= Math.PI * 2;
+  const illum = Math.abs(survRel) < HALF_FOV && hasLineOfSight(s.x, s.y, player.x, player.y);
+  const hasLOS = hasLineOfSight(player.x, player.y, s.x, s.y);
+  const visAlpha = illum ? Math.min(1, 0.3 + 0.7 * (1 - dist / 12)) : (hasLOS ? 0.03 : 0);
+  if (visAlpha < 0.01) return;
+  const screenX = (rel / HALF_FOV + 1) / 2 * W;
+  const pitchRad = player.pitch / FOCAL;
+  const screenY = HORIZON + FOCAL * Math.tan(pitchRad);
+  const sSize = Math.max(8, Math.min(40, 30 / Math.max(dist, 0.3)));
+  ctx.globalAlpha = visAlpha;
+  ctx.fillStyle = illum ? '#f84' : '#844';
+  ctx.fillRect(screenX - sSize / 2, screenY - sSize, sSize, sSize * 2);
+  ctx.strokeStyle = illum ? '#fa6' : '#a66';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(screenX - sSize / 2, screenY - sSize, sSize, sSize * 2);
+  ctx.globalAlpha = 1;
+}
+
 function renderDust(hz) {
   if (!lampOn) return;
   const pH = 0.5;
@@ -1398,7 +1600,11 @@ function render(time) {
     }
 
     let wallBr, ceilBr, floorBr;
-    if (lampOn) {
+    if (gamePhase === 'hunter') {
+      const d = hit ? perpDist : 6;
+      const a = Math.max(0.001, 0.02 / (1 + d * 0.2));
+      wallBr = a; ceilBr = a * 0.3; floorBr = a * 0.3;
+    } else if (lampOn) {
       const d = hit ? perpDist : 6;
       const b = Math.max(0.04, 1 / (1 + d * 0.5 + d * d * 0.2)) * lampMult;
       wallBr = b;
@@ -1494,6 +1700,7 @@ function render(time) {
   renderItems(hz);
   renderDust(hz);
   renderExitEIcon();
+  if (gamePhase === 'hunter') renderHunter(hz);
 
   if (lampOn) {
     const cx = W >> 1, cy = HORIZON;
@@ -1929,4 +2136,6 @@ spawnKey();
 buildNavGrid();
 buildRouteTable();
 spawnEnemy();
+hunterMode = true;
+if (hunterMode) { startHunterPhase(); gameState = 'playing'; initAudio(); }
 requestAnimationFrame((now) => { last = now; loop(now); });
