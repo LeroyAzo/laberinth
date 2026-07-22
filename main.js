@@ -442,7 +442,12 @@ keyImgs.push(new Image()); keyImgs[3].src = 'assets/images/three_keys.png';
 
 const doorTex = new Image();
 doorTex.src = 'assets/images/green_door_closed.png';
+const doorMidTex = new Image();
+doorMidTex.src = 'assets/images/door_mid.png';
+const doorOpenTex = new Image();
+doorOpenTex.src = 'assets/images/door_open.png';
 
+let exitDoorState = 'closed', exitDoorTimer = 0, exitDoorTimerMax = 0;
 
 let texWalls = [];
 
@@ -1001,9 +1006,33 @@ function update(dt) {
   if (canMove(nx, ny)) { player.x = nx; player.y = ny; }
   else if (canMove(nx, player.y)) { player.x = nx; }
   else if (canMove(player.x, ny)) { player.y = ny; }
-  if (isExit(player.x, player.y) && !player.won) {
-    player.won = true;
-    player.winTime = performance.now();
+  if (keys['e']) {
+    keys['e'] = false;
+    const exCX = CELLS_X * 2 - 1 + 0.5, exCY = CELLS_Y * 2 - 1 + 0.5;
+    if (exitDoorState === 'closed' && Math.hypot(player.x - exCX, player.y - exCY) < 2) {
+      if (inventory.keys > 0) {
+        inventory.keys--;
+        exitDoorState = 'mid';
+        exitDoorTimer = 0.5;
+      } else {
+        notifications.unshift({ text: 'Necesitas una llave', timer: 2 });
+        if (notifications.length > 4) notifications.pop();
+      }
+    }
+  }
+  if (exitDoorState === 'mid') {
+    exitDoorTimer -= dt;
+    if (exitDoorTimer <= 0) {
+      exitDoorState = 'open';
+      exitDoorTimer = 0.6;
+      exitDoorTimerMax = 0.6;
+    }
+  } else if (exitDoorState === 'open') {
+    exitDoorTimer -= dt;
+    if (exitDoorTimer <= 0 && !player.won) {
+      player.won = true;
+      player.winTime = performance.now();
+    }
   }
 
 
@@ -1184,6 +1213,35 @@ function renderItems(hz) {
 }
 
 
+function renderExitEIcon() {
+  if (exitDoorState !== 'closed') return;
+  const exCX = CELLS_X * 2 - 1 + 0.5, exCY = CELLS_Y * 2 - 1 + 0.5;
+  const dist = Math.hypot(player.x - exCX, player.y - exCY);
+  if (dist > 2 || dist < 0.1) return;
+  const angle = Math.atan2(exCY - player.y, exCX - player.x);
+  let rel = angle - pDir;
+  while (rel < -Math.PI) rel += Math.PI * 2;
+  while (rel > Math.PI) rel -= Math.PI * 2;
+  if (Math.abs(rel) > HALF_FOV + 0.2) return;
+  const screenX = (rel / HALF_FOV + 1) / 2 * W;
+  const pitchRad = player.pitch / FOCAL;
+  const screenY = HORIZON + FOCAL * Math.tan(pitchRad);
+  const s = Math.max(16, Math.min(48, 60 / dist));
+  const bx = screenX - s * 0.5;
+  const by = screenY - s * 0.5;
+  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  ctx.fillRect(bx, by, s, s);
+  ctx.strokeStyle = '#ddd';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(bx, by, s, s);
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${(s * 0.55) | 0}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('E', screenX, screenY);
+  ctx.textBaseline = 'alphabetic';
+}
+
 function renderDust(hz) {
   if (!lampOn) return;
   const pH = 0.5;
@@ -1330,8 +1388,10 @@ function render(time) {
     const brightness = f * wallBr;
 
     let wallTex = null;
-    if (hit && brightness > 0.005 && texWalls.some(w => w.x === mapX && w.y === mapY) && doorTex.complete && doorTex.naturalWidth > 0) {
-      wallTex = doorTex;
+    if (hit && brightness > 0.005 && texWalls.some(w => w.x === mapX && w.y === mapY)) {
+      if (exitDoorState === 'closed' && doorTex.complete && doorTex.naturalWidth > 0) wallTex = doorTex;
+      else if (exitDoorState === 'mid' && doorMidTex.complete && doorMidTex.naturalWidth > 0) wallTex = doorMidTex;
+      else if (exitDoorState === 'open' && doorOpenTex.complete && doorOpenTex.naturalWidth > 0) wallTex = doorOpenTex;
     }
     if (wallTex) {
       const tw = wallTex.width, th = wallTex.height;
@@ -1376,6 +1436,7 @@ function render(time) {
   renderFootprints(hz);
   renderItems(hz);
   renderDust(hz);
+  renderExitEIcon();
 
   if (lampOn) {
     const cx = W >> 1, cy = HORIZON;
@@ -1501,6 +1562,12 @@ function render(time) {
 
   ctx.fillStyle = 'rgba(255,240,200,0.04)';
   ctx.fillRect(0, 0, W, H);
+
+  if (exitDoorState === 'open') {
+    const flash = 1 - (exitDoorTimer / exitDoorTimerMax);
+    ctx.fillStyle = `rgba(255,255,255,${flash})`;
+    ctx.fillRect(0, 0, W, H);
+  }
 
   if (gameOver) {
     ctx.fillStyle = 'rgba(80,0,0,0.9)';
@@ -1700,6 +1767,7 @@ function restartGame() {
   footprints = [];
   dust = [];
   revealed = Array.from({ length: MAP_H }, () => Array(MAP_W).fill(false));
+  exitDoorState = 'closed'; exitDoorTimer = 0; exitDoorTimerMax = 0;
   gameOver = false;
   enemy.state = 'patrol';
   enemy.huntT = 0;
