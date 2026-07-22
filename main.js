@@ -1062,7 +1062,24 @@ function update(dt) {
           const r = Math.random();
           if (r < 0.33) { inventory.maps++; notifications.unshift({ text: 'Mapa encontrado', timer: 2 }); }
           else if (r < 0.66) { lampBattery = Math.min(10, lampBattery + 2); notifications.unshift({ text: 'Batería encontrada', timer: 2 }); }
-          else { inventory.keys++; notifications.unshift({ text: 'Llave encontrada', timer: 2 }); }
+          else {
+            inventory.keys++;
+            notifications.unshift({ text: 'Llave encontrada', timer: 2 });
+            const bonus = Math.random();
+            const bonusCount = bonus < 0.005 ? 3 : bonus < 0.055 ? 1 : 0;
+            for (let b = 0; b < bonusCount; b++) {
+              const cells = [];
+              for (let by = 1; by < MAP_H; by += 2) {
+                for (let bx = 1; bx < MAP_W; bx += 2) {
+                  if (maze[by][bx] === 0) cells.push({ x: bx, y: by });
+                }
+              }
+              if (cells.length) {
+                const c = cells[Math.random() * cells.length | 0];
+                items.push({ x: c.x + 0.5, y: c.y + 0.5, type: 'key_exit', collected: false });
+              }
+            }
+          }
           if (notifications.length > 4) notifications.pop();
           d.timer = 0; d.timerMax = 0;
         }
