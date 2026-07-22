@@ -1560,10 +1560,9 @@ function renderHunterRadar() {
       let relAngle = wallAngle - pDir2;
       while (relAngle < -Math.PI) relAngle += Math.PI * 2;
       while (relAngle > Math.PI) relAngle -= Math.PI * 2;
-      const radarAngle = relAngle + Math.PI / 2;
       const radarDist = (dist / maxDist) * r * 0.85;
-      const radarX = cx + Math.cos(radarAngle) * radarDist;
-      const radarY = cy - Math.sin(radarAngle) * radarDist;
+      const radarX = cx + Math.sin(relAngle) * radarDist;
+      const radarY = cy - Math.cos(relAngle) * radarDist;
       const bright = Math.min(0.7, 0.2 + 0.5 * (1 - dist / maxDist));
       ctx.fillStyle = `rgba(100,120,160,${bright})`;
       // Fill wall cell with multiple dots
