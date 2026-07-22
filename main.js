@@ -408,6 +408,9 @@ let handAnim = 0;
 let shakeX = 0, shakeY = 0;
 let gameState = 'menu';
 
+function enterFullscreen() { try { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); } catch(e) {} }
+function exitFullscreen() { try { if (document.fullscreenElement) document.exitFullscreen(); } catch(e) {} }
+
 const keys = {};
 let mouseLocked = false;
 let ignoreNextMove = false;
@@ -495,8 +498,8 @@ document.addEventListener('keyup', (e) => {
 document.addEventListener('pointerlockchange', () => {
   mouseLocked = document.pointerLockElement === canvas;
   canvas.style.cursor = mouseLocked ? 'none' : 'default';
-  if (!mouseLocked && gameState === 'playing') gameState = 'paused';
-  if (mouseLocked && gameState === 'paused') gameState = 'playing';
+  if (!mouseLocked && gameState === 'playing') { gameState = 'paused'; exitFullscreen(); }
+  if (mouseLocked && gameState === 'paused') { gameState = 'playing'; enterFullscreen(); }
 });
 
 document.addEventListener('mousemove', (e) => {
@@ -1811,6 +1814,7 @@ canvas.addEventListener('click', (e) => {
     const bx = (W >> 1) - 110, by = (H >> 1) + 45, bw = 220, bh = 48;
     if (mx >= bx && mx <= bx + bw && my >= by && my <= by + bh) {
       gameState = 'menu';
+      exitFullscreen();
       restartGame();
       return;
     }
@@ -1821,6 +1825,7 @@ canvas.addEventListener('click', (e) => {
     const bx = (W >> 1) - 120, by = (H >> 1) + 20, bw = 240, bh = 50;
     if (mx >= bx && mx <= bx + bw && my >= by && my <= by + bh) {
       gameState = 'playing';
+      enterFullscreen();
       initAudio();
       if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
       ignoreNextMove = true;
@@ -1834,6 +1839,7 @@ canvas.addEventListener('click', (e) => {
     const rby = (H >> 1) + 10;
     if (mx >= bx && mx <= bx + bw && my >= rby && my <= rby + bh) {
       gameState = 'playing';
+      enterFullscreen();
       initAudio();
       if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
       ignoreNextMove = true;
@@ -1843,6 +1849,7 @@ canvas.addEventListener('click', (e) => {
     const sby = (H >> 1) + 80;
     if (mx >= bx && mx <= bx + bw && my >= sby && my <= sby + bh) {
       gameState = 'menu';
+      exitFullscreen();
       restartGame();
       return;
     }
