@@ -608,19 +608,70 @@ let moveT = 0;
 function updateSurvivor(dt) {
   if (gamePhase !== 'hunter' || gameOver || player.won) return;
   const s = survivor;
+  const monDist = Math.hypot(player.x - s.x, player.y - s.y);
+  const monLos = hasLineOfSight(player.x, player.y, s.x, s.y);
   let bestKeyDist = Infinity;
+
+  // Stamina regen
   if (s.stamina.cur < s.stamina.max) s.stamina.cur = Math.min(s.stamina.max, s.stamina.cur + dt * 8);
   if (s.staminaCD && s.stamina.cur > 50) s.staminaCD = false;
+
+  // Sprint stamina drain
+  if (s.isSprinting) {
+    s.stamina.cur = Math.max(0, s.stamina.cur - 35 * dt);
+    if (s.stamina.cur <= 0) { s.isSprinting = false; s.staminaCD = true; }
+  }
+
+  // Battery drain
   if (s.lampOn && s.lampBattery > 0) {
     s.stepT += dt;
     if (s.stepT >= 40) { s.stepT = 0; s.lampBattery--; if (s.lampBattery <= 0) s.lampOn = false; }
   }
-  if (s.lampOn) {
-    s.huntT -= dt;
-    if (s.huntT < 0) { s.huntT = Math.random() * 4 + 1; }
-  }
+
+  // Detection & reaction
+  const alarmed = monDist < 12 && monLos;
+  const tooClose = monDist < 5 && monLos;
+
+  // Turn off lamp if monster sees us or very close
+  if (s.lampOn && (alarmed || tooClose)) s.lampOn = false;
+  // Turn lamp back on only if monster is far and wasn't alarmed recently
+  if (!s.lampOn && monDist > 15 && s.lampBattery > 0) s.lampOn = true;
+
+  // Hold breath when monster is within 5 cells (any LOS or hearing)
+  s.isHoldingBreath = tooClose || (monDist < 8 && monLos);
+  // Sprint when monster is close but outside hold-breath range, or during flee
+  s.isSprinting = (monDist < 10 && monDist >= 5 && monLos && s.stamina.cur > 0 && !s.staminaCD) ||
+                  (s.state === 'flee' && s.stamina.cur > 0 && !s.staminaCD);
 
   // State machine
+  if (s.isHoldingBreath) {
+    // When holding breath, don't move — stay still
+    s.targetCell = null; s.targetSubCell = null;
+  } else if (monDist < 10 && monLos) {
+    // Flee from monster: pick cell opposite direction
+    s.state = 'flee';
+    const fleeAng = Math.atan2(s.y - player.y, s.x - player.x);
+    let bestFleeCell = null, bestFleeScore = -Infinity;
+    for (let dy = -3; dy <= 3; dy++) {
+      for (let dx = -3; dx <= 3; dx++) {
+        const fx = toCell(s.x) + dx, fy = toCell(s.y) + dy;
+        if (fx < 2 || fx >= MAP_W - 2 || fy < 2 || fy >= MAP_H - 2) continue;
+        if (maze[fy][fx] !== 0 || navIndex[fy][fx] < 0) continue;
+        const cellAng = Math.atan2(fy + 0.5 - s.y, fx + 0.5 - s.x);
+        let diff = cellAng - fleeAng;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        const score = Math.cos(diff) * 2 - Math.hypot(fx + 0.5 - s.x, fy + 0.5 - s.y) * 0.1;
+        if (score > bestFleeScore) { bestFleeScore = score; bestFleeCell = { x: fx, y: fy }; }
+      }
+    }
+    if (bestFleeCell) { s.targetCell = bestFleeCell; s.cellTimer = 0; }
+    else { s.targetCell = null; }
+  } else if (s.state === 'flee') {
+    s.state = 'explore'; // stop fleeing when safe
+  }
+
+  // Normal exploration / key seeking (only when not fleeing)
   if (s.state === 'explore' || s.state === 'seekKey') {
     let foundKey = null;
     for (const item of items) {
@@ -657,39 +708,32 @@ function updateSurvivor(dt) {
     if (!bestDoor || s.keys === 0) { s.state = 'explore'; s.targetCell = null; }
     else {
       if (bestDoorDist < 2) {
-        s.keys--;
-        bestDoor.state = 'mid';
-        bestDoor.timer = 0.5;
+        s.keys--; bestDoor.state = 'mid'; bestDoor.timer = 0.5;
         s.state = 'explore'; s.targetCell = null;
       } else {
-        s.targetCell = { x: bestDoor.x, y: bestDoor.y };
-        s.cellTimer = 0;
+        s.targetCell = { x: bestDoor.x, y: bestDoor.y }; s.cellTimer = 0;
       }
     }
   }
 
-  // Route-based movement
+  // Movement
   s.cellTimer += dt;
   if (s.cellTimer > 6) { s.cellTimer = 0; s.targetCell = null; }
-  if (!s.targetCell) { s.state = 'explore'; return; }
-
+  if (!s.targetCell || s.isHoldingBreath) {
+    if (!s.targetCell) s.state = 'explore';
+    return;
+  }
   const sCx = toCell(s.x), sCy = toCell(s.y);
   const tgx = s.targetCell.x, tgy = s.targetCell.y;
-
   if (sCx === tgx && sCy === tgy) { s.targetCell = null; return; }
-
   const sIdx = navIndex[sCy][sCx];
   const tIdx = navIndex[tgy][tgx];
-
   if (sIdx >= 0 && tIdx >= 0) {
     const dir = routeTable[sIdx * NAV_N + tIdx];
     if (dir !== DIR_NONE) {
       if (!s.targetSubCell || (sCx === s.targetSubCell.x && sCy === s.targetSubCell.y)) {
         let nx = sCx, ny = sCy;
-        if (dir === DIR_E) nx++;
-        else if (dir === DIR_W) nx--;
-        else if (dir === DIR_S) ny++;
-        else ny--;
+        if (dir === DIR_E) nx++; else if (dir === DIR_W) nx--; else if (dir === DIR_S) ny++; else ny--;
         s.targetSubCell = { x: nx, y: ny };
       }
       if (s.targetSubCell) {
@@ -703,7 +747,6 @@ function updateSurvivor(dt) {
         else if (!isWall(s.x, ny)) { s.y = ny; s.dir = ang; }
       }
     } else {
-      // No route, direct move
       const ang = Math.atan2(tgy + 0.5 - s.y, tgx + 0.5 - s.x);
       const spd = (s.isSprinting ? 2.0 : 1.0) * dt;
       const nx = s.x + Math.cos(ang) * spd;
@@ -712,16 +755,30 @@ function updateSurvivor(dt) {
       else if (!isWall(nx, s.y)) { s.x = nx; s.dir = ang; }
       else if (!isWall(s.x, ny)) { s.y = ny; s.dir = ang; }
     }
+  } else { s.targetCell = null; }
+
+  // Footstep sounds
+  const moving2 = Math.hypot(s.x - (s.lastX || s.x), s.y - (s.lastY || s.y)) > 0.001;
+  s.lastX = s.x; s.lastY = s.y;
+  if (moving2 && !s.isHoldingBreath) {
+    s.stepDelay -= dt;
+    if (s.stepDelay <= 0) {
+      s.stepDelay = s.isSprinting ? 0.3 : 0.5;
+      s.walkStep++;
+      // Play footstep with distance-based volume
+      const vol = Math.max(0, Math.min(1, 1 - monDist / 12));
+      const a2 = (s.walkStep % 2 === 0) ? walkLAudio : walkRAudio;
+      if (a2 && vol > 0.02) { a2.currentTime = 0; a2.volume = vol * 0.3; a2.play().catch(() => {}); }
+    }
   } else {
-    s.targetCell = null;
+    s.stepDelay = 0;
   }
 
   // Collect key if overlapping
   for (const item of items) {
     if (item.collected || item.type !== 'key_exit') continue;
     if (Math.hypot(item.x - s.x, item.y - s.y) < 0.5) {
-      item.collected = true;
-      s.keys++;
+      item.collected = true; s.keys++;
     }
   }
 }
