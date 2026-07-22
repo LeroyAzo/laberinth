@@ -1064,7 +1064,7 @@ function update(dt) {
           else if (r < 0.66) { lampBattery = Math.min(10, lampBattery + 2); notifications.unshift({ text: 'Batería encontrada', timer: 2 }); }
           else { inventory.keys++; notifications.unshift({ text: 'Llave encontrada', timer: 2 }); }
           if (notifications.length > 4) notifications.pop();
-          d.state = 'closed'; d.timer = 0; d.timerMax = 0;
+          d.timer = 0; d.timerMax = 0;
         }
       }
     }
@@ -1542,7 +1542,6 @@ function render(time) {
     ctx.textAlign = 'left';
     ctx.fillStyle = '#aaa';
     let invY = H - 30;
-    if (inventory.maps > 0) { ctx.fillStyle = '#f80'; ctx.fillText('Mapas: ' + inventory.maps, 200, invY); invY -= 16; }
     ctx.textAlign = 'right';
     const nx = W - 10;
     let ny = 20;
@@ -1604,7 +1603,7 @@ function render(time) {
   ctx.fillRect(0, 0, W, H);
 
   for (const d of exitDoors) {
-    if (d.state === 'open') {
+    if (d.state === 'open' && d.timer > 0) {
       const flash = 1 - (d.timer / d.timerMax);
       ctx.fillStyle = `rgba(255,255,255,${flash})`;
       ctx.fillRect(0, 0, W, H);
