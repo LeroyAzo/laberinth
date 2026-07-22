@@ -1038,29 +1038,31 @@ function updateEnemy(dt) {
 
 function update(dt) {
   try {
-  if (breathingAudio) {
-    if (breathingAudio.paused) {
-      if (gameState === 'playing' && !isHoldingBreath && !exhalePlaying && !isSprinting && !(stopRunAudio && !stopRunAudio.paused) && !gameOver && !player.won) {
-        breathingAudio.play().catch(() => {});
-      }
-    } else {
-      if (gameState !== 'playing' || isHoldingBreath || isSprinting || (stopRunAudio && !stopRunAudio.paused) || gameOver || player.won) {
-        breathingAudio.pause();
+  if (gamePhase !== 'hunter') {
+    if (breathingAudio) {
+      if (breathingAudio.paused) {
+        if (gameState === 'playing' && !isHoldingBreath && !exhalePlaying && !isSprinting && !(stopRunAudio && !stopRunAudio.paused) && !gameOver && !player.won) {
+          breathingAudio.play().catch(() => {});
+        }
+      } else {
+        if (gameState !== 'playing' || isHoldingBreath || isSprinting || (stopRunAudio && !stopRunAudio.paused) || gameOver || player.won) {
+          breathingAudio.pause();
+        }
       }
     }
-  }
-  if (sprintAudio) {
-    const shouldSprint = gameState === 'playing' && isSprinting && !gameOver && !player.won;
-    if (shouldSprint && sprintAudio.paused) {
-      if (stopRunAudio && !stopRunAudio.paused) { stopRunAudio.pause(); stopRunAudio.currentTime = 0; }
-      if (breathingAudio && !breathingAudio.paused) breathingAudio.pause();
-      sprintAudio.play().catch(() => {});
-      if (runAudio) { runAudio.currentTime = 0; runAudio.play().catch(() => {}); }
-    } else if (!shouldSprint && !sprintAudio.paused) {
-      sprintAudio.pause();
-      sprintAudio.currentTime = 0;
-      if (runAudio) { runAudio.pause(); runAudio.currentTime = 0; }
-      walkDelay = 0.5;
+    if (sprintAudio) {
+      const shouldSprint = gameState === 'playing' && isSprinting && !gameOver && !player.won;
+      if (shouldSprint && sprintAudio.paused) {
+        if (stopRunAudio && !stopRunAudio.paused) { stopRunAudio.pause(); stopRunAudio.currentTime = 0; }
+        if (breathingAudio && !breathingAudio.paused) breathingAudio.pause();
+        sprintAudio.play().catch(() => {});
+        if (runAudio) { runAudio.currentTime = 0; runAudio.play().catch(() => {}); }
+      } else if (!shouldSprint && !sprintAudio.paused) {
+        sprintAudio.pause();
+        sprintAudio.currentTime = 0;
+        if (runAudio) { runAudio.pause(); runAudio.currentTime = 0; }
+        walkDelay = 0.5;
+      }
     }
   }
   if (gameState !== 'playing') return;
@@ -1251,9 +1253,11 @@ function update(dt) {
       const interval = (walkStep % 2 === 0) ? 0.32 : 0.68;
       if (walkTimer >= interval) {
         walkTimer = 0;
-        const a = (walkStep % 2 === 0) ? walkLAudio : walkRAudio;
         walkStep++;
-        if (a && a.paused) { a.currentTime = 0; a.play().catch(() => {}); }
+        if (gamePhase !== 'hunter') {
+          const a = (walkStep % 2 === 0) ? walkLAudio : walkRAudio;
+          if (a && a.paused) { a.currentTime = 0; a.play().catch(() => {}); }
+        }
       }
     }
   }
@@ -1496,6 +1500,73 @@ function renderHunter(hz) {
   ctx.globalAlpha = 1;
 }
 
+function renderHunterRadar() {
+  if (gamePhase !== 'hunter') return;
+  const cx = W - 90, cy = H - 90, r = 70;
+  // Radar background
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#2a2';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  // Rotating sweep line
+  const sweep = (performance.now() * 0.001 * 0.8) % (Math.PI * 2);
+  ctx.strokeStyle = 'rgba(34,170,34,0.3)';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.arc(cx, cy, r, sweep - 0.15, sweep + 0.15);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(34,170,34,0.06)';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + Math.cos(sweep) * r, cy + Math.sin(sweep) * r);
+  ctx.strokeStyle = '#2a2';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  // Wall dots on radar
+  const maxDist = 8;
+  const px = player.x, py = player.y;
+  for (let dy = -maxDist; dy <= maxDist; dy++) {
+    for (let dx = -maxDist; dx <= maxDist; dx++) {
+      const wx = (px + dx) | 0, wy = (py + dy) | 0;
+      if (wx < 0 || wx >= MAP_W || wy < 0 || wy >= MAP_H) continue;
+      if (maze[wy][wx] !== 1) continue;
+      if (dx * dx + dy * dy > maxDist * maxDist) continue;
+      const ddx = wx + 0.5 - px, ddy = wy + 0.5 - py;
+      const dist = Math.hypot(ddx, ddy);
+      if (dist > maxDist) continue;
+      const radarX = cx + (ddx / maxDist) * r * 0.85;
+      const radarY = cy + (ddy / maxDist) * r * 0.85;
+      const angleToWall = Math.atan2(ddy, ddx);
+      let relAngle = angleToWall - sweep;
+      while (relAngle < -Math.PI) relAngle += Math.PI * 2;
+      while (relAngle > Math.PI) relAngle -= Math.PI * 2;
+      const brightness = Math.abs(relAngle) < 0.3 ? 0.9 : 0.25;
+      ctx.fillStyle = `rgba(34,170,34,${brightness})`;
+      ctx.fillRect(radarX - 1.5, radarY - 1.5, 3, 3);
+    }
+  }
+  // Center dot (player/monster)
+  ctx.fillStyle = '#4f4';
+  ctx.beginPath();
+  ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+  ctx.fill();
+  // Survivor dot
+  const sdx = survivor.x - px, sdy = survivor.y - py;
+  const sDist = Math.hypot(sdx, sdy);
+  if (sDist < maxDist) {
+    const sx2 = cx + (sdx / maxDist) * r * 0.85;
+    const sy2 = cy + (sdy / maxDist) * r * 0.85;
+    ctx.fillStyle = '#f84';
+    ctx.beginPath();
+    ctx.arc(sx2, sy2, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
 function renderDust(hz) {
   if (!lampOn) return;
   const pH = 0.5;
@@ -1700,7 +1771,7 @@ function render(time) {
   renderItems(hz);
   renderDust(hz);
   renderExitEIcon();
-  if (gamePhase === 'hunter') renderHunter(hz);
+  if (gamePhase === 'hunter') { renderHunter(hz); renderHunterRadar(); }
 
   if (lampOn) {
     const cx = W >> 1, cy = HORIZON;
@@ -1736,6 +1807,7 @@ function render(time) {
     ctx.font = '12px monospace';
     ctx.textAlign = 'right';
     ctx.fillText(fps + ' FPS', W - 10, H - 10);
+    if (gamePhase !== 'hunter') {
     const lx = lampOffX;
     const ly = (H >> 1) + lampOffY;
     const ls = 1.6;
@@ -1763,6 +1835,7 @@ function render(time) {
     }
     lCtx.imageSmoothingEnabled = true;
     ctx.drawImage(lampCanvas, 0, 0);
+    }
     ctx.textAlign = 'left';
     ctx.fillStyle = '#aaa';
     let invY = H - 30;
