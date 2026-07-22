@@ -389,6 +389,7 @@ let hunterMode = false;
 let hunterRoarTimer = 15 + Math.random() * 45;
 let monsterStepT = 0;
 let radarBlackout = 0;
+let respawnFlash = 0;
 let survFootprints = [];
 const survFootImg = new Image();
 survFootImg.src = 'assets/images/survivor_foot.png';
@@ -438,10 +439,27 @@ function startHunterPhase() {
   hunterRoarTimer = 15 + Math.random() * 45;
   monsterStepT = 0;
   radarBlackout = 0;
+  respawnFlash = 0;
   survFootprints = [];
   // Give survivor initial keys matching what player had
   survivor.keys = inventory.keys;
   inventory.keys = 0;
+}
+
+function respawnAsSurvivor() {
+  gamePhase = 'survivor';
+  player.x = 1.5; player.y = 1.5; player.dir = 0; player.pitch = 0;
+  player.won = false; player.winTime = 0;
+  stamina.cur = stamina.max;
+  lampOn = true; lampBattery = 10; lampBatteryTimer = 0;
+  lampMult = 1; lampFlickerTimer = 0; lampFlickerCooldown = 0;
+  isSprinting = false; isHoldingBreath = false; staminaCD = false;
+  inventory = { keys: 0, batteries: 0, maps: 0 };
+  for (const d of exitDoors) { d.state = 'closed'; d.timer = 0; d.timerMax = 0; }
+  spawnKey();
+  notifications.unshift({ text: 'Tienes otra oportunidad', timer: 3 });
+  if (notifications.length > 4) notifications.pop();
+  respawnFlash = 0.6;
 }
 
 function enterFullscreen() { try { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); } catch(e) {} }
@@ -1347,6 +1365,7 @@ function update(dt) {
       }
     }
   }
+  if (respawnFlash > 0) respawnFlash -= dt;
 
 
   if (moving && !isSprinting) {
@@ -1420,9 +1439,9 @@ function update(dt) {
         a.play().catch(() => {});
       }
     }
-    // Check if monster catches survivor
+    // Check if monster catches survivor → respawn as survivor
     if (Math.hypot(player.x - survivor.x, player.y - survivor.y) < 0.4) {
-      gameOver = true; gameOverTime = performance.now();
+      respawnAsSurvivor();
     }
   } else {
     // Check transition: all doors open, no keys, no key items on map
@@ -2077,6 +2096,11 @@ function render(time) {
       break;
     }
   }
+  if (respawnFlash > 0) {
+    const f = 1 - (respawnFlash / 0.6);
+    ctx.fillStyle = `rgba(255,255,255,${f})`;
+    ctx.fillRect(0, 0, W, H);
+  }
 
   if (gameOver) {
     ctx.fillStyle = 'rgba(80,0,0,0.9)';
@@ -2268,6 +2292,7 @@ function restartGame() {
   hunterRoarTimer = 15 + Math.random() * 45;
   monsterStepT = 0;
   radarBlackout = 0;
+  respawnFlash = 0;
   survFootprints = [];
   findExitDoors();
   spawnKey();
