@@ -1891,8 +1891,17 @@ function render(time) {
           ctx.globalAlpha = 1 - brightness;
           ctx.fillStyle = '#000';
           ctx.fillRect((i * COL_W) | 0, visStart, COL_W | 0, visH);
-          ctx.globalAlpha = 1;
-        }
+  if (illum) {
+    const flashSize = sSize * 3;
+    const grd = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, flashSize);
+    grd.addColorStop(0, `rgba(255,255,255,${visAlpha * 0.6})`);
+    grd.addColorStop(0.3, `rgba(255,255,220,${visAlpha * 0.2})`);
+    grd.addColorStop(1, 'rgba(255,255,220,0)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(screenX - flashSize, screenY - flashSize, flashSize * 2, flashSize * 2);
+  }
+  ctx.globalAlpha = 1;
+}
       } else {
         ctx.fillStyle = `rgb(${(80 * brightness) | 0},${(76 * brightness) | 0},${(72 * brightness) | 0})`;
         ctx.fillRect(i * COL_W | 0, drawStart, COL_W | 0, wallH);
