@@ -633,7 +633,7 @@ function updateSurvivor(dt) {
 
   // Detection
   const alarmed = monDist < 10 && monLos;
-  const tooClose = monDist < 5;
+  const tooClose = monDist < 5 && monLos;
 
   if (s.lampOn && (alarmed || tooClose)) s.lampOn = false;
   if (!s.lampOn && monDist > 15 && s.lampBattery > 0) s.lampOn = true;
@@ -643,7 +643,7 @@ function updateSurvivor(dt) {
   s.isSprinting = s.isHoldingBreath || (monDist < 10 && monLos && s.stamina.cur > 0 && !s.staminaCD && !s.isHoldingBreath);
 
   // Radar blackout when survivor holds breath
-  if (s.isHoldingBreath) radarBlackout = 10;
+  if (s.isHoldingBreath) radarBlackout = 5;
   if (radarBlackout > 0) radarBlackout -= dt;
 
   // State machine - always flee when monster is close
@@ -1618,7 +1618,7 @@ function renderSurvFootprints(hz) {
     if (Math.abs(rel) > HALF_FOV + 0.1) continue;
     const screenX = (rel / HALF_FOV + 1) / 2 * W;
     const h = Math.max(4, 20 / dist);
-    const alpha = Math.min(0.5, f.life / 8 * 0.5);
+    const alpha = Math.min(0.85, f.life / 8 * 0.85);
     const sy = hz - FOCAL * 0.6 / dist;
     ctx.globalAlpha = alpha;
     if (survFootImg.complete && survFootImg.naturalWidth > 0) {
