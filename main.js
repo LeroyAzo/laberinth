@@ -1153,7 +1153,7 @@ function update(dt) {
   if (gameOver || player.won) return;
   const sin = Math.sin(player.dir);
   const cos = Math.cos(player.dir);
-  isHoldingBreath = keys['c'] && !staminaCD && stamina.cur > 0 && !exhalePlaying;
+  isHoldingBreath = gamePhase !== 'hunter' && keys['c'] && !staminaCD && stamina.cur > 0 && !exhalePlaying;
   if (isHoldingBreath && !wasHoldingBreath) {
     if (stopRunAudio && !stopRunAudio.paused) { stopRunAudio.pause(); stopRunAudio.currentTime = 0; }
     if (sprintAudio && !sprintAudio.paused) { sprintAudio.pause(); sprintAudio.currentTime = 0; }
@@ -1166,7 +1166,7 @@ function update(dt) {
   if (wasHoldingBreath && !isHoldingBreath && !exhalePlaying) playExhale(stamina.cur <= 0);
   wasHoldingBreath = isHoldingBreath;
   let mx = 0, my = 0;
-  if (!isHoldingBreath || gamePhase === 'hunter') {
+  if (!isHoldingBreath) {
     if (keys['w'] || keys['arrowup'])    { mx += cos; my += sin; }
     if (keys['s'] || keys['arrowdown'])  { mx -= cos; my -= sin; }
     if (keys['a'] || keys['arrowleft'])  { mx += sin; my -= cos; }
@@ -1279,7 +1279,7 @@ function update(dt) {
     if (moving && monsterStepT >= stepI) {
       monsterStepT = 0;
       footprints.push({ x: player.x, y: player.y, dir: player.dir, life: 10 });
-      playFootstep(1, isSprinting ? 2.0 : 1.2);
+      playFootstep(keys['c'] ? 0.1 : 1, isSprinting ? 2.0 : 1.2);
     }
   }
   if (keys['e']) {
