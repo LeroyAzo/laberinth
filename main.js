@@ -1153,7 +1153,7 @@ function update(dt) {
   if (gameOver || player.won) return;
   const sin = Math.sin(player.dir);
   const cos = Math.cos(player.dir);
-  isHoldingBreath = gamePhase !== 'hunter' && keys['c'] && !staminaCD && stamina.cur > 0 && !exhalePlaying;
+  isHoldingBreath = keys['c'] && !staminaCD && stamina.cur > 0 && !exhalePlaying;
   if (isHoldingBreath && !wasHoldingBreath) {
     if (stopRunAudio && !stopRunAudio.paused) { stopRunAudio.pause(); stopRunAudio.currentTime = 0; }
     if (sprintAudio && !sprintAudio.paused) { sprintAudio.pause(); sprintAudio.currentTime = 0; }
