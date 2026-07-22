@@ -448,19 +448,28 @@ const doorOpenTex = new Image();
 doorOpenTex.src = 'assets/images/door_open.png';
 
 let exitDoorState = 'closed', exitDoorTimer = 0, exitDoorTimerMax = 0;
+let exitDoorX = -1, exitDoorY = -1;
 
-let texWalls = [];
-
-function findExitWalls() {
-  texWalls = [];
-  const ex = CELLS_X * 2 - 1, ey = CELLS_Y * 2 - 1;
-  const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
-  for (const [dx, dy] of dirs) {
-    const wx = ex + dx, wy = ey + dy;
-    if (wx >= 0 && wx < MAP_W && wy >= 0 && wy < MAP_H && maze[wy][wx] === 1) {
-      texWalls.push({ x: wx, y: wy });
+function findExitDoor() {
+  const candidates = [];
+  for (let y = 2; y < MAP_H - 2; y++) {
+    for (let x = 2; x < MAP_W - 2; x++) {
+      if (maze[y][x] === 1) {
+        const adjacent = (maze[y-1][x] === 0) + (maze[y+1][x] === 0) + (maze[y][x-1] === 0) + (maze[y][x+1] === 0);
+        if (adjacent > 0) {
+          const dist = Math.hypot(x + 0.5 - 1.5, y + 0.5 - 1.5);
+          if (dist > 6) candidates.push({ x, y });
+        }
+      }
     }
   }
+  if (candidates.length) {
+    const pick = candidates[Math.random() * candidates.length | 0];
+    exitDoorX = pick.x; exitDoorY = pick.y;
+  } else {
+    exitDoorX = 3; exitDoorY = 3;
+  }
+  exitDoorState = 'closed'; exitDoorTimer = 0; exitDoorTimerMax = 0;
 }
 
 
@@ -519,10 +528,18 @@ function isWall(x, y) {
   return maze[my][mx] === 1;
 }
 
-function isExit(x, y) {
-  const mx = x | 0, my = y | 0;
-  if (mx < 0 || mx >= MAP_W || my < 0 || my >= MAP_H) return false;
-  return maze[my][mx] === 2;
+function findExitDoorFace() {
+  const wallCX = exitDoorX + 0.5, wallCY = exitDoorY + 0.5;
+  const dx = player.x - wallCX, dy = player.y - wallCY;
+  let fx, fy;
+  if (Math.abs(dx) > Math.abs(dy)) {
+    fx = exitDoorX + (dx > 0 ? 1 : 0);
+    fy = wallCY;
+  } else {
+    fx = wallCX;
+    fy = exitDoorY + (dy > 0 ? 1 : 0);
+  }
+  return { x: fx, y: fy };
 }
 
 let moveT = 0;
@@ -1008,8 +1025,8 @@ function update(dt) {
   else if (canMove(player.x, ny)) { player.y = ny; }
   if (keys['e']) {
     keys['e'] = false;
-    const exCX = CELLS_X * 2 - 1 + 0.5, exCY = CELLS_Y * 2 - 1 + 0.5;
-    if (exitDoorState === 'closed' && Math.hypot(player.x - exCX, player.y - exCY) < 2) {
+    const face = findExitDoorFace();
+    if (exitDoorState === 'closed' && Math.hypot(player.x - face.x, player.y - face.y) < 2) {
       if (inventory.keys > 0) {
         inventory.keys--;
         exitDoorState = 'mid';
@@ -1214,11 +1231,11 @@ function renderItems(hz) {
 
 
 function renderExitEIcon() {
-  if (exitDoorState !== 'closed') return;
-  const exCX = CELLS_X * 2 - 1 + 0.5, exCY = CELLS_Y * 2 - 1 + 0.5;
-  const dist = Math.hypot(player.x - exCX, player.y - exCY);
+  if (exitDoorState !== 'closed' || exitDoorX < 0) return;
+  const face = findExitDoorFace();
+  const dist = Math.hypot(player.x - face.x, player.y - face.y);
   if (dist > 2 || dist < 0.1) return;
-  const angle = Math.atan2(exCY - player.y, exCX - player.x);
+  const angle = Math.atan2(face.y - player.y, face.x - player.x);
   let rel = angle - pDir;
   while (rel < -Math.PI) rel += Math.PI * 2;
   while (rel > Math.PI) rel -= Math.PI * 2;
@@ -1388,7 +1405,7 @@ function render(time) {
     const brightness = f * wallBr;
 
     let wallTex = null;
-    if (hit && brightness > 0.005 && texWalls.some(w => w.x === mapX && w.y === mapY)) {
+    if (hit && brightness > 0.005 && exitDoorX >= 0 && mapX === exitDoorX && mapY === exitDoorY) {
       if (exitDoorState === 'closed' && doorTex.complete && doorTex.naturalWidth > 0) wallTex = doorTex;
       else if (exitDoorState === 'mid' && doorMidTex.complete && doorMidTex.naturalWidth > 0) wallTex = doorMidTex;
       else if (exitDoorState === 'open' && doorOpenTex.complete && doorOpenTex.naturalWidth > 0) wallTex = doorOpenTex;
@@ -1750,7 +1767,7 @@ function render(time) {
 
 function restartGame() {
   generateMaze();
-  findExitWalls();
+  findExitDoor();
   buildNavGrid();
   buildRouteTable();
   player.x = 1.5; player.y = 1.5; player.dir = 0; player.pitch = 0;
@@ -1767,7 +1784,6 @@ function restartGame() {
   footprints = [];
   dust = [];
   revealed = Array.from({ length: MAP_H }, () => Array(MAP_W).fill(false));
-  exitDoorState = 'closed'; exitDoorTimer = 0; exitDoorTimerMax = 0;
   gameOver = false;
   enemy.state = 'patrol';
   enemy.huntT = 0;
@@ -1862,7 +1878,7 @@ function loop(now) {
 }
 
 generateMaze();
-findExitWalls();
+findExitDoor();
 buildNavGrid();
 buildRouteTable();
 spawnEnemy();
