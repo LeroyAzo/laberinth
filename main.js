@@ -1526,7 +1526,6 @@ function renderHunterRadar() {
   const cx = W - 90, cy = H - 90, r = 70;
   const px = player.x, py = player.y;
   const pDir2 = player.dir;
-  // Radar background
   ctx.fillStyle = 'rgba(10,10,20,0.5)';
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -1534,15 +1533,13 @@ function renderHunterRadar() {
   ctx.strokeStyle = '#446';
   ctx.lineWidth = 1;
   ctx.stroke();
-  // Forward direction marker (top of radar = player direction)
   ctx.strokeStyle = '#558';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(cx, cy - r + 4);
   ctx.lineTo(cx, cy - r - 6);
   ctx.stroke();
-  // Wall dots on radar
-  const maxDist = 8;
+  const maxDist = 5;
   for (let dy = -maxDist; dy <= maxDist; dy++) {
     for (let dx = -maxDist; dx <= maxDist; dx++) {
       const wx = (px + dx) | 0, wy = (py + dy) | 0;
@@ -1562,31 +1559,18 @@ function renderHunterRadar() {
       const radarY = cy - Math.sin(radarAngle) * radarDist;
       const bright = Math.min(0.7, 0.2 + 0.5 * (1 - dist / maxDist));
       ctx.fillStyle = `rgba(100,120,160,${bright})`;
-      ctx.fillRect(radarX - 1.5, radarY - 1.5, 3, 3);
+      // Fill wall cell with multiple dots
+      for (let sub = 0; sub < 4; sub++) {
+        const offX = (sub & 1) * 3 - 1.5;
+        const offY = (sub >> 1) * 3 - 1.5;
+        ctx.fillRect(radarX + offX - 1, radarY + offY - 1, 2, 2);
+      }
     }
   }
-  // Center dot (player/monster)
   ctx.fillStyle = '#68c';
   ctx.beginPath();
   ctx.arc(cx, cy, 3, 0, Math.PI * 2);
   ctx.fill();
-  // Survivor dot
-  const sdx = survivor.x - px, sdy = survivor.y - py;
-  const sDist = Math.hypot(sdx, sdy);
-  if (sDist < maxDist) {
-    const sAngle = Math.atan2(sdy, sdx);
-    let sRel = sAngle - pDir2;
-    while (sRel < -Math.PI) sRel += Math.PI * 2;
-    while (sRel > Math.PI) sRel -= Math.PI * 2;
-    const sRadarAngle = sRel + Math.PI / 2;
-    const sRadarDist = (sDist / maxDist) * r * 0.85;
-    const sx2 = cx + Math.cos(sRadarAngle) * sRadarDist;
-    const sy2 = cy - Math.sin(sRadarAngle) * sRadarDist;
-    ctx.fillStyle = '#f84';
-    ctx.beginPath();
-    ctx.arc(sx2, sy2, 3, 0, Math.PI * 2);
-    ctx.fill();
-  }
 }
 
 function renderDust(hz) {
