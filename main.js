@@ -1166,7 +1166,7 @@ function update(dt) {
   if (wasHoldingBreath && !isHoldingBreath && !exhalePlaying) playExhale(stamina.cur <= 0);
   wasHoldingBreath = isHoldingBreath;
   let mx = 0, my = 0;
-  if (!isHoldingBreath) {
+  if (!isHoldingBreath || gamePhase === 'hunter') {
     if (keys['w'] || keys['arrowup'])    { mx += cos; my += sin; }
     if (keys['s'] || keys['arrowdown'])  { mx -= cos; my -= sin; }
     if (keys['a'] || keys['arrowleft'])  { mx += sin; my -= cos; }
@@ -2223,7 +2223,7 @@ function render(time) {
     ctx.globalAlpha = 1;
   }
 
-  if (handAnim > 0.001) {
+  if (handAnim > 0.001 && gamePhase !== 'hunter') {
     const hh = H * 1.3;
     const hw = hh * (handImg.naturalWidth / handImg.naturalHeight) || W;
     const targetY = 200;
