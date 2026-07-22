@@ -388,6 +388,10 @@ let gamePhase = 'survivor';
 let hunterMode = false;
 let hunterRoarTimer = 15 + Math.random() * 45;
 let monsterStepT = 0;
+let radarBlackout = 0;
+let survFootprints = [];
+const survFootImg = new Image();
+survFootImg.src = 'assets/images/survivor_foot.png';
 
 const survivor = {
   x: 1.5, y: 1.5, dir: 0,
@@ -432,6 +436,8 @@ function startHunterPhase() {
   survivor.pidIntegral = 0; survivor.pidPrevError = 0;
   hunterRoarTimer = 15 + Math.random() * 45;
   monsterStepT = 0;
+  radarBlackout = 0;
+  survFootprints = [];
   // Give survivor initial keys matching what player had
   survivor.keys = inventory.keys;
   inventory.keys = 0;
@@ -612,43 +618,36 @@ function updateSurvivor(dt) {
   const monLos = hasLineOfSight(player.x, player.y, s.x, s.y);
   let bestKeyDist = Infinity;
 
-  // Stamina regen
   if (s.stamina.cur < s.stamina.max) s.stamina.cur = Math.min(s.stamina.max, s.stamina.cur + dt * 8);
   if (s.staminaCD && s.stamina.cur > 50) s.staminaCD = false;
 
-  // Sprint stamina drain
   if (s.isSprinting) {
     s.stamina.cur = Math.max(0, s.stamina.cur - 35 * dt);
     if (s.stamina.cur <= 0) { s.isSprinting = false; s.staminaCD = true; }
   }
 
-  // Battery drain
   if (s.lampOn && s.lampBattery > 0) {
     s.stepT += dt;
     if (s.stepT >= 40) { s.stepT = 0; s.lampBattery--; if (s.lampBattery <= 0) s.lampOn = false; }
   }
 
-  // Detection & reaction
-  const alarmed = monDist < 12 && monLos;
-  const tooClose = monDist < 5 && monLos;
+  // Detection
+  const alarmed = monDist < 10 && monLos;
+  const tooClose = monDist < 5;
 
-  // Turn off lamp if monster sees us or very close
   if (s.lampOn && (alarmed || tooClose)) s.lampOn = false;
-  // Turn lamp back on only if monster is far and wasn't alarmed recently
   if (!s.lampOn && monDist > 15 && s.lampBattery > 0) s.lampOn = true;
 
-  // Hold breath when monster is within 5 cells (any LOS or hearing)
-  s.isHoldingBreath = tooClose || (monDist < 8 && monLos);
-  // Sprint when monster is close but outside hold-breath range, or during flee
-  s.isSprinting = (monDist < 10 && monDist >= 5 && monLos && s.stamina.cur > 0 && !s.staminaCD) ||
-                  (s.state === 'flee' && s.stamina.cur > 0 && !s.staminaCD);
+  // Survivor holds breath and flees when monster is close
+  s.isHoldingBreath = tooClose;
+  s.isSprinting = s.isHoldingBreath || (monDist < 10 && monLos && s.stamina.cur > 0 && !s.staminaCD && !s.isHoldingBreath);
 
-  // State machine
-  if (s.isHoldingBreath) {
-    // When holding breath, don't move — stay still
-    s.targetCell = null; s.targetSubCell = null;
-  } else if (monDist < 10 && monLos) {
-    // Flee from monster: pick cell opposite direction
+  // Radar blackout when survivor holds breath
+  if (s.isHoldingBreath) radarBlackout = 10;
+  if (radarBlackout > 0) radarBlackout -= dt;
+
+  // State machine - always flee when monster is close
+  if (tooClose || (monDist < 10 && monLos)) {
     s.state = 'flee';
     const fleeAng = Math.atan2(s.y - player.y, s.x - player.x);
     let bestFleeCell = null, bestFleeScore = -Infinity;
@@ -668,10 +667,10 @@ function updateSurvivor(dt) {
     if (bestFleeCell) { s.targetCell = bestFleeCell; s.cellTimer = 0; }
     else { s.targetCell = null; }
   } else if (s.state === 'flee') {
-    s.state = 'explore'; // stop fleeing when safe
+    s.state = 'explore';
   }
 
-  // Normal exploration / key seeking (only when not fleeing)
+  // Normal exploration (only when not fleeing)
   if (s.state === 'explore' || s.state === 'seekKey') {
     let foundKey = null;
     for (const item of items) {
@@ -681,8 +680,7 @@ function updateSurvivor(dt) {
     }
     const nearDoor = exitDoors.some(d => d.state === 'closed' && Math.hypot(d.x + 0.5 - s.x, d.y + 0.5 - s.y) < 8);
     if (foundKey && (bestKeyDist < 8 || (!nearDoor && s.keys === 0))) {
-      s.targetCell = { x: foundKey.x | 0, y: foundKey.y | 0 };
-      s.cellTimer = 0;
+      s.targetCell = { x: foundKey.x | 0, y: foundKey.y | 0 }; s.cellTimer = 0;
     } else if (s.keys > 0 && nearDoor) {
       s.state = 'goToDoor';
     } else {
@@ -716,13 +714,10 @@ function updateSurvivor(dt) {
     }
   }
 
-  // Movement
+  // Movement (always move, even when holding breath — flee)
   s.cellTimer += dt;
   if (s.cellTimer > 6) { s.cellTimer = 0; s.targetCell = null; }
-  if (!s.targetCell || s.isHoldingBreath) {
-    if (!s.targetCell) s.state = 'explore';
-    return;
-  }
+  if (!s.targetCell) { if (s.state !== 'flee') s.state = 'explore'; return; }
   const sCx = toCell(s.x), sCy = toCell(s.y);
   const tgx = s.targetCell.x, tgy = s.targetCell.y;
   if (sCx === tgx && sCy === tgy) { s.targetCell = null; return; }
@@ -757,18 +752,24 @@ function updateSurvivor(dt) {
     }
   } else { s.targetCell = null; }
 
-  // Footstep sounds
-  const moving2 = Math.hypot(s.x - (s.lastX || s.x), s.y - (s.lastY || s.y)) > 0.001;
+  // Visual footprints & footstep sounds
+  const prevX = s.lastX || s.x, prevY = s.lastY || s.y;
+  const moving2 = Math.hypot(s.x - prevX, s.y - prevY) > 0.001;
   s.lastX = s.x; s.lastY = s.y;
-  if (moving2 && !s.isHoldingBreath) {
+  if (moving2) {
+    // Visual footprint every few steps
     s.stepDelay -= dt;
     if (s.stepDelay <= 0) {
       s.stepDelay = s.isSprinting ? 0.3 : 0.5;
       s.walkStep++;
-      // Play footstep with distance-based volume
-      const vol = Math.max(0, Math.min(1, 1 - monDist / 12));
-      const a2 = (s.walkStep % 2 === 0) ? walkLAudio : walkRAudio;
-      if (a2 && vol > 0.02) { a2.currentTime = 0; a2.volume = vol * 0.3; a2.play().catch(() => {}); }
+      // Add visual footprint
+      if (s.walkStep % 2 === 0) survFootprints.push({ x: s.x, y: s.y, dir: s.dir, life: 8 });
+      // Footstep sound (only audible when NOT holding breath)
+      if (!s.isHoldingBreath) {
+        const vol = Math.max(0, Math.min(1, 1 - monDist / 12));
+        const a2 = (s.walkStep % 2 === 0) ? walkLAudio : walkRAudio;
+        if (a2 && vol > 0.02) { a2.currentTime = 0; a2.volume = vol * 0.3; a2.play().catch(() => {}); }
+      }
     }
   } else {
     s.stepDelay = 0;
@@ -1608,11 +1609,53 @@ function renderHunter(hz) {
   ctx.globalAlpha = 1;
 }
 
+function renderSurvFootprints(hz) {
+  for (let i = survFootprints.length - 1; i >= 0; i--) {
+    const f = survFootprints[i];
+    f.life -= 0.016;
+    if (f.life <= 0) { survFootprints.splice(i, 1); continue; }
+    const dx = f.x - player.x, dy = f.y - player.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 0.3 || dist > 8) continue;
+    const angle = Math.atan2(dy, dx);
+    let rel = angle - pDir;
+    while (rel < -Math.PI) rel += Math.PI * 2;
+    while (rel > Math.PI) rel -= Math.PI * 2;
+    if (Math.abs(rel) > HALF_FOV + 0.1) continue;
+    const screenX = (rel / HALF_FOV + 1) / 2 * W;
+    const h = Math.max(4, 20 / dist);
+    const alpha = Math.min(0.5, f.life / 8 * 0.5);
+    const sy = hz - FOCAL * 0.6 / dist;
+    ctx.globalAlpha = alpha;
+    if (survFootImg.complete && survFootImg.naturalWidth > 0) {
+      const s = h * 0.8;
+      ctx.save();
+      ctx.translate(screenX, sy);
+      ctx.rotate(-pDir + f.dir);
+      ctx.drawImage(survFootImg, -s / 2, -s / 2, s, s);
+      ctx.restore();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
 function renderHunterRadar() {
   if (gamePhase !== 'hunter') return;
   const cx = W - 90, cy = H - 90, r = 70;
   const px = player.x, py = player.y;
   const pDir2 = player.dir;
+
+  if (radarBlackout > 0) {
+    ctx.fillStyle = 'rgba(5,5,10,0.6)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#224';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    return;
+  }
+
   ctx.fillStyle = 'rgba(10,10,20,0.5)';
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -1645,7 +1688,6 @@ function renderHunterRadar() {
       const radarY = cy - Math.cos(relAngle) * radarDist;
       const bright = Math.min(0.7, 0.2 + 0.5 * (1 - dist / maxDist));
       ctx.fillStyle = `rgba(100,120,160,${bright})`;
-      // Fill wall cell with multiple dots
       for (let sub = 0; sub < 4; sub++) {
         const offX = (sub & 1) * 3 - 1.5;
         const offY = (sub >> 1) * 3 - 1.5;
@@ -1657,7 +1699,6 @@ function renderHunterRadar() {
   ctx.beginPath();
   ctx.arc(cx, cy, 3, 0, Math.PI * 2);
   ctx.fill();
-  // Survivor dot
   const sdx = survivor.x - px, sdy = survivor.y - py;
   const sDist = Math.hypot(sdx, sdy);
   if (sDist < maxDist) {
@@ -1879,7 +1920,7 @@ function render(time) {
   renderItems(hz);
   renderDust(hz);
   renderExitEIcon();
-  if (gamePhase === 'hunter') { renderHunter(hz); renderHunterRadar(); }
+  if (gamePhase === 'hunter') { renderHunter(hz); renderHunterRadar(); renderSurvFootprints(hz); }
 
   if (lampOn) {
     const cx = W >> 1, cy = HORIZON;
@@ -2144,35 +2185,8 @@ function render(time) {
   }
 
   if (gamePhase === 'hunter') {
-    // Survivor on minimap
     ctx.fillStyle = '#f84';
     ctx.fillRect(MINIMAP_X + (survivor.x | 0) * MINIMAP_CELL, MINIMAP_Y + (survivor.y | 0) * MINIMAP_CELL, MINIMAP_CELL, MINIMAP_CELL);
-    // Survivor target route
-    if (survivor.targetCell) {
-      const tmx = MINIMAP_X + survivor.targetCell.x * MINIMAP_CELL;
-      const tmy = MINIMAP_Y + survivor.targetCell.y * MINIMAP_CELL;
-      ctx.strokeStyle = '#f80';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(tmx, tmy, MINIMAP_CELL, MINIMAP_CELL);
-      const sx2 = toCell(survivor.x), sy2 = toCell(survivor.y);
-      const sIdx2 = navIndex[sy2][sx2];
-      const tIdx2 = navIndex[survivor.targetCell.y][survivor.targetCell.x];
-      if (sIdx2 >= 0 && tIdx2 >= 0) {
-        const dir2 = routeTable[sIdx2 * NAV_N + tIdx2];
-        if (dir2 !== DIR_NONE) {
-          let nx2 = sx2, ny2 = sy2;
-          if (dir2 === DIR_E) nx2++; else if (dir2 === DIR_W) nx2--; else if (dir2 === DIR_S) ny2++; else ny2--;
-          ctx.fillStyle = 'rgba(255,136,0,0.4)';
-          ctx.fillRect(MINIMAP_X + nx2 * MINIMAP_CELL, MINIMAP_Y + ny2 * MINIMAP_CELL, MINIMAP_CELL, MINIMAP_CELL);
-          ctx.strokeStyle = '#f80';
-          ctx.lineWidth = 0.5;
-          ctx.beginPath();
-          ctx.moveTo(MINIMAP_X + survivor.x * MINIMAP_CELL, MINIMAP_Y + survivor.y * MINIMAP_CELL);
-          ctx.lineTo(MINIMAP_X + nx2 * MINIMAP_CELL + (MINIMAP_CELL >> 1), MINIMAP_Y + ny2 * MINIMAP_CELL + (MINIMAP_CELL >> 1));
-          ctx.stroke();
-        }
-      }
-    }
   }
   }
 
@@ -2239,6 +2253,8 @@ function restartGame() {
   gamePhase = 'survivor';
   hunterRoarTimer = 15 + Math.random() * 45;
   monsterStepT = 0;
+  radarBlackout = 0;
+  survFootprints = [];
   findExitDoors();
   spawnKey();
   buildNavGrid();
