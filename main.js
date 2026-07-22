@@ -395,7 +395,7 @@ const survivor = {
   stamina: { cur: 100, max: 100 },
   lampOn: true, lampBattery: 10,
   state: 'explore',
-  targetCell: null, patrolWait: 0, cellTimer: 0,
+  targetCell: null, targetSubCell: null, patrolWait: 0, cellTimer: 0,
   moveT: 0, stepT: 0, walkStep: 0,
   isSprinting: false, isHoldingBreath: false,
   staminaCD: false, huntT: 0,
@@ -425,7 +425,7 @@ function startHunterPhase() {
   survivor.stamina.cur = 100;
   survivor.lampOn = true; survivor.lampBattery = 10;
   survivor.state = 'explore';
-  survivor.targetCell = null; survivor.patrolWait = 0; survivor.cellTimer = 0;
+  survivor.targetCell = null; survivor.targetSubCell = null; survivor.patrolWait = 0; survivor.cellTimer = 0;
   survivor.moveT = 0; survivor.stepT = 0; survivor.walkStep = 0;
   survivor.isSprinting = false; survivor.isHoldingBreath = false;
   survivor.staminaCD = false; survivor.huntT = 0;
@@ -609,20 +609,18 @@ function updateSurvivor(dt) {
   if (gamePhase !== 'hunter' || gameOver || player.won) return;
   const s = survivor;
   let bestKeyDist = Infinity;
-  // Recharge stamina
   if (s.stamina.cur < s.stamina.max) s.stamina.cur = Math.min(s.stamina.max, s.stamina.cur + dt * 8);
   if (s.staminaCD && s.stamina.cur > 50) s.staminaCD = false;
-  // Battery drain
   if (s.lampOn && s.lampBattery > 0) {
     s.stepT += dt;
     if (s.stepT >= 40) { s.stepT = 0; s.lampBattery--; if (s.lampBattery <= 0) s.lampOn = false; }
   }
-  // Flashlight flicker
   if (s.lampOn) {
     s.huntT -= dt;
     if (s.huntT < 0) { s.huntT = Math.random() * 4 + 1; }
   }
-  // AI state: collect keys → open doors → try exit
+
+  // State machine
   if (s.state === 'explore' || s.state === 'seekKey') {
     let foundKey = null;
     for (const item of items) {
@@ -630,14 +628,14 @@ function updateSurvivor(dt) {
       const d = Math.hypot(item.x - s.x, item.y - s.y);
       if (d < bestKeyDist) { bestKeyDist = d; foundKey = item; }
     }
-    // Move toward key if close enough (< 12 cells) or no keys and far from any door
     const nearDoor = exitDoors.some(d => d.state === 'closed' && Math.hypot(d.x + 0.5 - s.x, d.y + 0.5 - s.y) < 8);
     if (foundKey && (bestKeyDist < 8 || (!nearDoor && s.keys === 0))) {
       s.targetCell = { x: foundKey.x | 0, y: foundKey.y | 0 };
+      s.cellTimer = 0;
     } else if (s.keys > 0 && nearDoor) {
       s.state = 'goToDoor';
     } else {
-      if (!s.targetCell || s.cellTimer > 3) {
+      if (!s.targetCell || s.cellTimer > 4) {
         const cells = [];
         for (let y = 2; y < MAP_H - 2; y++) {
           for (let x = 2; x < MAP_W - 2; x++) {
@@ -653,8 +651,7 @@ function updateSurvivor(dt) {
     let bestDoor = null, bestDoorDist = Infinity;
     for (const d of exitDoors) {
       if (d.state !== 'closed') continue;
-      const ddx = d.x + 0.5 - s.x, ddy = d.y + 0.5 - s.y;
-      const dd = Math.hypot(ddx, ddy);
+      const dd = Math.hypot(d.x + 0.5 - s.x, d.y + 0.5 - s.y);
       if (dd < bestDoorDist) { bestDoorDist = dd; bestDoor = d; }
     }
     if (!bestDoor || s.keys === 0) { s.state = 'explore'; s.targetCell = null; }
@@ -666,34 +663,59 @@ function updateSurvivor(dt) {
         s.state = 'explore'; s.targetCell = null;
       } else {
         s.targetCell = { x: bestDoor.x, y: bestDoor.y };
+        s.cellTimer = 0;
       }
     }
   }
-  // Movement
+
+  // Route-based movement
   s.cellTimer += dt;
-  if (s.cellTimer > 5) { s.cellTimer = 0; s.targetCell = null; }
+  if (s.cellTimer > 6) { s.cellTimer = 0; s.targetCell = null; }
   if (!s.targetCell) { s.state = 'explore'; return; }
-  const tcx = s.targetCell.x + 0.5, tcy = s.targetCell.y + 0.5;
-  const spd = (s.isSprinting ? 2.0 : 1.0) * dt;
-  const ang = Math.atan2(tcy - s.y, tcx - s.x);
-  const nx = s.x + Math.cos(ang) * spd;
-  const ny = s.y + Math.sin(ang) * spd;
-  if (!isWall(nx, ny)) { s.x = nx; s.y = ny; }
-  else if (!isWall(nx, s.y)) s.x = nx;
-  else if (!isWall(s.x, ny)) s.y = ny;
-  s.dir = ang;
-  // Footstep sounds
-  {
-    s.moveT += dt;
-    s.stepDelay -= dt;
-    if (s.stepDelay <= 0) {
-      const stepSound = s.walkStep % 2 === 0 ? 'walkL' : 'walkR';
-      // Survivor footstep - will play positioned audio
-      if (s.isSprinting) s.stepDelay = 0.3;
-      else s.stepDelay = 0.5;
-      s.walkStep++;
+
+  const sCx = toCell(s.x), sCy = toCell(s.y);
+  const tgx = s.targetCell.x, tgy = s.targetCell.y;
+
+  if (sCx === tgx && sCy === tgy) { s.targetCell = null; return; }
+
+  const sIdx = navIndex[sCy][sCx];
+  const tIdx = navIndex[tgy][tgx];
+
+  if (sIdx >= 0 && tIdx >= 0) {
+    const dir = routeTable[sIdx * NAV_N + tIdx];
+    if (dir !== DIR_NONE) {
+      if (!s.targetSubCell || (sCx === s.targetSubCell.x && sCy === s.targetSubCell.y)) {
+        let nx = sCx, ny = sCy;
+        if (dir === DIR_E) nx++;
+        else if (dir === DIR_W) nx--;
+        else if (dir === DIR_S) ny++;
+        else ny--;
+        s.targetSubCell = { x: nx, y: ny };
+      }
+      if (s.targetSubCell) {
+        const tscx = s.targetSubCell.x + 0.5, tscy = s.targetSubCell.y + 0.5;
+        const ang = Math.atan2(tscy - s.y, tscx - s.x);
+        const spd = (s.isSprinting ? 2.0 : 1.0) * dt;
+        const nx = s.x + Math.cos(ang) * spd;
+        const ny = s.y + Math.sin(ang) * spd;
+        if (!isWall(nx, ny)) { s.x = nx; s.y = ny; s.dir = ang; }
+        else if (!isWall(nx, s.y)) { s.x = nx; s.dir = ang; }
+        else if (!isWall(s.x, ny)) { s.y = ny; s.dir = ang; }
+      }
+    } else {
+      // No route, direct move
+      const ang = Math.atan2(tgy + 0.5 - s.y, tgx + 0.5 - s.x);
+      const spd = (s.isSprinting ? 2.0 : 1.0) * dt;
+      const nx = s.x + Math.cos(ang) * spd;
+      const ny = s.y + Math.sin(ang) * spd;
+      if (!isWall(nx, ny)) { s.x = nx; s.y = ny; s.dir = ang; }
+      else if (!isWall(nx, s.y)) { s.x = nx; s.dir = ang; }
+      else if (!isWall(s.x, ny)) { s.y = ny; s.dir = ang; }
     }
+  } else {
+    s.targetCell = null;
   }
+
   // Collect key if overlapping
   for (const item of items) {
     if (item.collected || item.type !== 'key_exit') continue;
@@ -1922,6 +1944,13 @@ function render(time) {
     const sx = (W >> 1) + (tw >> 1) + 6;
     ctx.fillStyle = enemy.state === 'hunt' ? '#d33' : '#36d';
     ctx.fillRect(sx, 14, 10, 10);
+    if (gamePhase === 'hunter') {
+      ctx.fillStyle = '#f84';
+      ctx.textAlign = 'center';
+      const scx = toCell(survivor.x), scy = toCell(survivor.y);
+      const stxt = 'SURV: (' + scx + ',' + scy + ')  KEYS: ' + survivor.keys + '  STATE: ' + survivor.state + '  TARGET: ' + (survivor.targetCell ? '(' + survivor.targetCell.x + ',' + survivor.targetCell.y + ')' : 'NONE');
+      ctx.fillText(stxt, W >> 1, 36);
+    }
     }
   }
 
@@ -2053,6 +2082,38 @@ function render(time) {
         ctx.moveTo(MINIMAP_X + enemy.x * MINIMAP_CELL, MINIMAP_Y + enemy.y * MINIMAP_CELL);
         ctx.lineTo(nmx, nmy);
         ctx.stroke();
+      }
+    }
+  }
+
+  if (gamePhase === 'hunter') {
+    // Survivor on minimap
+    ctx.fillStyle = '#f84';
+    ctx.fillRect(MINIMAP_X + (survivor.x | 0) * MINIMAP_CELL, MINIMAP_Y + (survivor.y | 0) * MINIMAP_CELL, MINIMAP_CELL, MINIMAP_CELL);
+    // Survivor target route
+    if (survivor.targetCell) {
+      const tmx = MINIMAP_X + survivor.targetCell.x * MINIMAP_CELL;
+      const tmy = MINIMAP_Y + survivor.targetCell.y * MINIMAP_CELL;
+      ctx.strokeStyle = '#f80';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(tmx, tmy, MINIMAP_CELL, MINIMAP_CELL);
+      const sx2 = toCell(survivor.x), sy2 = toCell(survivor.y);
+      const sIdx2 = navIndex[sy2][sx2];
+      const tIdx2 = navIndex[survivor.targetCell.y][survivor.targetCell.x];
+      if (sIdx2 >= 0 && tIdx2 >= 0) {
+        const dir2 = routeTable[sIdx2 * NAV_N + tIdx2];
+        if (dir2 !== DIR_NONE) {
+          let nx2 = sx2, ny2 = sy2;
+          if (dir2 === DIR_E) nx2++; else if (dir2 === DIR_W) nx2--; else if (dir2 === DIR_S) ny2++; else ny2--;
+          ctx.fillStyle = 'rgba(255,136,0,0.4)';
+          ctx.fillRect(MINIMAP_X + nx2 * MINIMAP_CELL, MINIMAP_Y + ny2 * MINIMAP_CELL, MINIMAP_CELL, MINIMAP_CELL);
+          ctx.strokeStyle = '#f80';
+          ctx.lineWidth = 0.5;
+          ctx.beginPath();
+          ctx.moveTo(MINIMAP_X + survivor.x * MINIMAP_CELL, MINIMAP_Y + survivor.y * MINIMAP_CELL);
+          ctx.lineTo(MINIMAP_X + nx2 * MINIMAP_CELL + (MINIMAP_CELL >> 1), MINIMAP_Y + ny2 * MINIMAP_CELL + (MINIMAP_CELL >> 1));
+          ctx.stroke();
+        }
       }
     }
   }
