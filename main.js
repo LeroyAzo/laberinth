@@ -1578,6 +1578,22 @@ function renderHunterRadar() {
   ctx.beginPath();
   ctx.arc(cx, cy, 3, 0, Math.PI * 2);
   ctx.fill();
+  // Survivor dot
+  const sdx = survivor.x - px, sdy = survivor.y - py;
+  const sDist = Math.hypot(sdx, sdy);
+  if (sDist < maxDist) {
+    const sAngle = Math.atan2(sdy, sdx);
+    let sRel = sAngle - pDir2;
+    while (sRel < -Math.PI) sRel += Math.PI * 2;
+    while (sRel > Math.PI) sRel -= Math.PI * 2;
+    const sRadarDist = (sDist / maxDist) * r * 0.85;
+    const sx2 = cx + Math.sin(sRel) * sRadarDist;
+    const sy2 = cy - Math.cos(sRel) * sRadarDist;
+    ctx.fillStyle = '#f84';
+    ctx.beginPath();
+    ctx.arc(sx2, sy2, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 function renderDust(hz) {
