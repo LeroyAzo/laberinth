@@ -1066,7 +1066,7 @@ function update(dt) {
             inventory.keys++;
             notifications.unshift({ text: 'Llave encontrada', timer: 2 });
             const bonus = Math.random();
-            const bonusCount = bonus < 0.005 ? 3 : bonus < 0.055 ? 1 : 0;
+            const bonusCount = bonus < 0.005 ? 2 : bonus < 0.055 ? 1 : 0;
             for (let b = 0; b < bonusCount; b++) {
               const cells = [];
               for (let by = 1; by < MAP_H; by += 2) {
