@@ -2414,6 +2414,4 @@ spawnKey();
 buildNavGrid();
 buildRouteTable();
 spawnEnemy();
-hunterMode = true;
-if (hunterMode) { startHunterPhase(); gameState = 'playing'; initAudio(); }
 requestAnimationFrame((now) => { last = now; loop(now); });
