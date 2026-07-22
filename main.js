@@ -386,6 +386,7 @@ let shakeX = 0, shakeY = 0;
 let gameState = 'menu';
 let gamePhase = 'survivor';
 let hunterMode = false;
+let hunterRoarTimer = 15 + Math.random() * 45;
 
 const survivor = {
   x: 1.5, y: 1.5, dir: 0,
@@ -428,6 +429,7 @@ function startHunterPhase() {
   survivor.isSprinting = false; survivor.isHoldingBreath = false;
   survivor.staminaCD = false; survivor.huntT = 0;
   survivor.pidIntegral = 0; survivor.pidPrevError = 0;
+  hunterRoarTimer = 15 + Math.random() * 45;
   // Give survivor initial keys matching what player had
   survivor.keys = inventory.keys;
   inventory.keys = 0;
@@ -1189,6 +1191,9 @@ function update(dt) {
   if (canMove(nx, ny)) { player.x = nx; player.y = ny; }
   else if (canMove(nx, player.y)) { player.x = nx; }
   else if (canMove(player.x, ny)) { player.y = ny; }
+  if (gamePhase === 'hunter' && moving && moveD > 0.01) {
+    footprints.push({ x: player.x, y: player.y, dir: player.dir, life: 10 });
+  }
   if (keys['e']) {
     keys['e'] = false;
     const near = nearestDoor();
@@ -1300,6 +1305,22 @@ function update(dt) {
 
   if (gamePhase === 'hunter') {
     try{updateSurvivor(dt)}catch(e){console.error('updateSurvivor:',e)}
+    // Monster roars
+    hunterRoarTimer -= dt;
+    if (hunterRoarTimer <= 0) {
+      hunterRoarTimer = 15 + Math.random() * 45;
+      const sDist = Math.hypot(survivor.x - player.x, survivor.y - player.y);
+      const vol = Math.max(0, 1 - sDist / 12);
+      if (roarBuffers.length) {
+        const buf = roarBuffers[Math.random() * roarBuffers.length | 0];
+        playPositionalSound(buf, vol);
+      } else if (monsterRoar.length) {
+        const a = monsterRoar[Math.random() * monsterRoar.length | 0];
+        a.currentTime = 0;
+        a.volume = vol * 0.4;
+        a.play().catch(() => {});
+      }
+    }
     // Check if monster catches survivor
     if (Math.hypot(player.x - survivor.x, player.y - survivor.y) < 0.4) {
       gameOver = true; gameOverTime = performance.now();
@@ -1503,32 +1524,25 @@ function renderHunter(hz) {
 function renderHunterRadar() {
   if (gamePhase !== 'hunter') return;
   const cx = W - 90, cy = H - 90, r = 70;
+  const px = player.x, py = player.y;
+  const pDir2 = player.dir;
   // Radar background
-  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.fillStyle = 'rgba(10,10,20,0.5)';
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = '#2a2';
+  ctx.strokeStyle = '#446';
   ctx.lineWidth = 1;
   ctx.stroke();
-  // Rotating sweep line
-  const sweep = (performance.now() * 0.001 * 0.8) % (Math.PI * 2);
-  ctx.strokeStyle = 'rgba(34,170,34,0.3)';
-  ctx.beginPath();
-  ctx.moveTo(cx, cy);
-  ctx.arc(cx, cy, r, sweep - 0.15, sweep + 0.15);
-  ctx.closePath();
-  ctx.fillStyle = 'rgba(34,170,34,0.06)';
-  ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(cx, cy);
-  ctx.lineTo(cx + Math.cos(sweep) * r, cy + Math.sin(sweep) * r);
-  ctx.strokeStyle = '#2a2';
+  // Forward direction marker (top of radar = player direction)
+  ctx.strokeStyle = '#558';
   ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - r + 4);
+  ctx.lineTo(cx, cy - r - 6);
   ctx.stroke();
   // Wall dots on radar
   const maxDist = 8;
-  const px = player.x, py = player.y;
   for (let dy = -maxDist; dy <= maxDist; dy++) {
     for (let dx = -maxDist; dx <= maxDist; dx++) {
       const wx = (px + dx) | 0, wy = (py + dy) | 0;
@@ -1538,19 +1552,21 @@ function renderHunterRadar() {
       const ddx = wx + 0.5 - px, ddy = wy + 0.5 - py;
       const dist = Math.hypot(ddx, ddy);
       if (dist > maxDist) continue;
-      const radarX = cx + (ddx / maxDist) * r * 0.85;
-      const radarY = cy + (ddy / maxDist) * r * 0.85;
-      const angleToWall = Math.atan2(ddy, ddx);
-      let relAngle = angleToWall - sweep;
+      const wallAngle = Math.atan2(ddy, ddx);
+      let relAngle = wallAngle - pDir2;
       while (relAngle < -Math.PI) relAngle += Math.PI * 2;
       while (relAngle > Math.PI) relAngle -= Math.PI * 2;
-      const brightness = Math.abs(relAngle) < 0.3 ? 0.9 : 0.25;
-      ctx.fillStyle = `rgba(34,170,34,${brightness})`;
+      const radarAngle = relAngle + Math.PI / 2;
+      const radarDist = (dist / maxDist) * r * 0.85;
+      const radarX = cx + Math.cos(radarAngle) * radarDist;
+      const radarY = cy - Math.sin(radarAngle) * radarDist;
+      const bright = Math.min(0.7, 0.2 + 0.5 * (1 - dist / maxDist));
+      ctx.fillStyle = `rgba(100,120,160,${bright})`;
       ctx.fillRect(radarX - 1.5, radarY - 1.5, 3, 3);
     }
   }
   // Center dot (player/monster)
-  ctx.fillStyle = '#4f4';
+  ctx.fillStyle = '#68c';
   ctx.beginPath();
   ctx.arc(cx, cy, 3, 0, Math.PI * 2);
   ctx.fill();
@@ -1558,8 +1574,14 @@ function renderHunterRadar() {
   const sdx = survivor.x - px, sdy = survivor.y - py;
   const sDist = Math.hypot(sdx, sdy);
   if (sDist < maxDist) {
-    const sx2 = cx + (sdx / maxDist) * r * 0.85;
-    const sy2 = cy + (sdy / maxDist) * r * 0.85;
+    const sAngle = Math.atan2(sdy, sdx);
+    let sRel = sAngle - pDir2;
+    while (sRel < -Math.PI) sRel += Math.PI * 2;
+    while (sRel > Math.PI) sRel -= Math.PI * 2;
+    const sRadarAngle = sRel + Math.PI / 2;
+    const sRadarDist = (sDist / maxDist) * r * 0.85;
+    const sx2 = cx + Math.cos(sRadarAngle) * sRadarDist;
+    const sy2 = cy - Math.sin(sRadarAngle) * sRadarDist;
     ctx.fillStyle = '#f84';
     ctx.beginPath();
     ctx.arc(sx2, sy2, 3, 0, Math.PI * 2);
@@ -2089,6 +2111,8 @@ function render(time) {
 
 function restartGame() {
   generateMaze();
+  gamePhase = 'survivor';
+  hunterRoarTimer = 15 + Math.random() * 45;
   findExitDoors();
   spawnKey();
   buildNavGrid();
